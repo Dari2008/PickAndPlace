@@ -30,12 +30,12 @@
 
 
 ## Description
-PickAndPlace is a DIY SMD pick-and-place machine and solder paste dispenser built from an old Creality CR-10S.
-A **Raspberry Pi 5** runs everything (jobs, display, cameras, website), and a **BTT Octopus V1.1** with its own
-firmware only moves the motors.
-The head has a belt-driven *seesaw Z*: one motor lowers the vacuum picker while it raises the paste syringe,
+I built PickAndPlace, a DIY SMD pick-and-place machine and solder paste dispenser, from an old Creality CR-10S.
+I let a **Raspberry Pi 5** run everything (jobs, display, cameras, website), and I wrote my own firmware for the
+**BTT Octopus V1.1** so that it only moves the motors.
+I gave the head a belt-driven *seesaw Z*: one motor lowers the vacuum picker while it raises the paste syringe,
 and the other way round.
-By now there are about 30,000 lines of code in about 170 files, plus about 8,000 lines of CadQuery for the
+By now I have written about 30,000 lines of code in about 170 files, plus about 8,000 lines of CadQuery for the
 3D models.
 
 More details:
@@ -84,16 +84,16 @@ interface, and it turns an old CR-10S into a machine that builds my own PCBs.
 
 
 ## 3D Models
-All renders are made from the STEP files in [models/](models/). Each folder holds one unit: `assembly.step` has
-everything in place, the other files are the single parts.
-The whole machine with all electronics is [models/main-assembly/assembly.step](models/main-assembly/assembly.step).
+I designed every part in CadQuery and made all renders from the STEP files in [models/](models/).
+I put each unit in its own folder: `assembly.step` has everything in place, the other files are the single parts.
+I also put the whole machine with all electronics into one file: [models/main-assembly/assembly.step](models/main-assembly/assembly.step).
 
 ### Head (seesaw Z)
 <img src="images/renders/head-mount.png" alt="Head with seesaw Z" width="420" align="right">
 
-A 3 mm aluminium plate on the CR-10 X-carriage with two MGN9 rails.
-A NEMA17 at the top drives one GT2 belt loop: the **picker** hangs on one side, the **paste syringe** on the other.
-When one goes down, the other comes up.
+I bolted a 3 mm aluminium plate with two MGN9 rails onto the CR-10 X-carriage.
+I put a NEMA17 at the top that drives one GT2 belt loop: I hung the **picker** on one side and the **paste syringe**
+on the other. When one goes down, the other comes up.
 
 - Travel ±62 mm, working stroke ±55 mm
 - Optical home sensor in the centre
@@ -106,9 +106,9 @@ When one goes down, the other comes up.
 ### Nozzle changer
 <img src="images/renders/juki-tool-changer.png" alt="Juki nozzle changer" width="300" align="right">
 
-Five slots for Juki 500 nozzles.
+I made a changer with five slots for Juki 500 nozzles.
 The nozzle slides in from the front, and when the head lifts, the lid holds the collar and pulls the nozzle off.
-A TCRT5000 sensor behind each slot sees if a nozzle is there.
+I put a TCRT5000 sensor behind each slot, so it sees if a nozzle is there.
 
 [models/juki-tool-changer](models/juki-tool-changer/)
 
@@ -117,8 +117,8 @@ A TCRT5000 sensor behind each slot sees if a nozzle is there.
 ### Feeders
 <img src="images/renders/feeder.png" alt="Tape feeder on its gantry" width="420" align="right">
 
-Tape feeders for 7" reels on their own rail (the feeder gantry).
-Each feeder has a sprocket drive, a peel-off spool, a WS2812 status LED and a QR code.
+I designed tape feeders for 7" reels that ride on their own rail (the feeder gantry).
+I gave each feeder a sprocket drive, a peel-off spool, a WS2812 status LED and a QR code.
 
 [models/feeder](models/feeder/)
 
@@ -137,8 +137,8 @@ Each feeder has a sprocket drive, a peel-off spool, a WS2812 status LED and a QR
 ### Carrier board schematic
 ![Carrier board schematic](images/schematic.png)
 
-A small board on the Pi's 40-pin header with the ADS1115 for the joystick, the buzzer, and connectors for the
-display, the vacuum sensor, the joystick and the start / pause / stop buttons.
+I designed a small board for the Pi's 40-pin header. I put the ADS1115 for the joystick and the buzzer on it,
+plus connectors for the display, the vacuum sensor, the joystick and the start / pause / stop buttons.
 
 ### PCB
 | Front | Back |
@@ -150,8 +150,8 @@ Front and back layer of the carrier board.
 ### Wiring
 ![Wiring: Raspberry Pi 5 and BTT Octopus](hardware/wiring.png)
 
-Every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus the motors, inputs and
-outputs on the Octopus.
+I drew every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus the motors,
+inputs and outputs on the Octopus.
 
 ### Octopus pin by pin
 ![Octopus wiring, pin by pin](hardware/octopus-wiring.png)
@@ -197,7 +197,8 @@ All screens and settings are in [UI.md](UI.md).
 
 
 ## Architecture
-The Pi does the thinking, the Octopus does the moving. They talk over USB with a simple text protocol.
+I split the work: the Pi does the thinking, the Octopus does the moving. I made them talk over USB with a simple
+text protocol.
 
 ```
  browser ──HTTP/WebSocket──> pap-web (TypeScript) ──TCP 127.0.0.1:7070──┐
@@ -207,9 +208,9 @@ The Pi does the thinking, the Octopus does the moving. They talk over USB with a
  USB cameras (V4L2) ───────────────────────────────-┘    └── USB ──> Octopus (motion, endstops, outputs)
 ```
 
-- Vision runs without OpenCV
-- Settings live on the Pi (`~/pap-data`) and on the Octopus (machine values)
-- The Octopus stops by itself if the Pi goes silent while it moves
+- I wrote the vision without OpenCV
+- I keep the settings on the Pi (`~/pap-data`) and the machine values on the Octopus
+- I made the Octopus stop by itself if the Pi goes silent while it moves
 
 
 ## Installation
@@ -366,13 +367,13 @@ optional. Tools are listed separately because you may already have them. The sam
 | **M5** | Joining the aluminium profiles |
 | **Wood screws** (Spax 2 × 10 mm) | Parts onto the MDF base |
 
-The model folders list the exact lengths for each part (for example M3 × 10 into the nozzle changer inserts).
+I kept it to these four sizes so I only needed a few screw sets.
 
 ---
 
 ## Tools
 
-Not part of the machine, but they make the build a lot easier:
+I bought these tools for the build. They are not part of the machine, but they made it a lot easier:
 
 | Tool | Used for | Price | Shop |
 |---|---|--:|---|
@@ -383,14 +384,19 @@ Not part of the machine, but they make the build a lot easier:
 | [Mini 3-in-1 wire stripper / side cutter, 20–10 AWG](https://www.amazon.de/dp/B0FDQD4YRX) | Stripping and cutting wire | 6.79 | Amazon |
 | | | **41.03** | |
 
-You'll also need a soldering iron (for the carrier board and for pressing in the heat-set inserts), a 3D
+I also used a soldering iron (for the carrier board and for pressing in the heat-set inserts), a 3D
 printer and a drill.
 
 ### Total
 
 | | EUR |
 |---|--:|
-| Machine parts | 627.45 |
-| Tools | 41.03 |
+| [Electronics and control](#electronics-and-control) | 182.18 |
+| [Motion (frame and gantry)](#motion-frame-and-gantry) | 107.78 |
+| [Head and nozzle](#head-and-nozzle) | 100.23 |
+| [Vacuum](#vacuum) | 52.10 |
+| [Solder paste](#solder-paste) | 10.99 |
+| [Wiring](#wiring-1) | 83.47 |
+| [Fasteners and consumables](#fasteners-and-consumables) | 90.70 |
 | Shipping (about; Amazon shipped free) | 10.00 |
-| **Total** | **678.48** |
+| **Total** | **637.45** |
