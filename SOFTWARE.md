@@ -1,7 +1,7 @@
 # Software: Raspberry Pi 5 + BTT Octopus V1.1
 
 The Pi 5 is the main controller: jobs, feeders, settings, the 3.5" display with touch and joystick, the
-vacuum sensor, two USB cameras and the website. The Octopus (own firmware, [../octopus-fw](../octopus-fw))
+vacuum sensor, two USB cameras and the website. The Octopus (own firmware, [octopus-fw](octopus-fw))
 only moves the 8 motors, reads the endstops and switches the 12 V outputs. They talk over USB with the same
 text protocol as before ([../protocol.md](../protocol.md)).
 
@@ -20,7 +20,7 @@ Wiring: [hardware/wiring.svg](hardware/wiring.svg) (made by `python hardware/wir
 |---|---|---|
 | `pap-core` | `core/` | The ported ATmega job runner / feeders / settings (`ctrl/`), the ported ESP32 display UI (`ui/esp/`) plus the new screens, the Octopus link (`octo/`), cameras and vision without OpenCV (`vision/`), I2C / GPIO / SPI drivers (`hal/`, `dev/`), TCP command port (`api/`) |
 | `pap-web` | `web/` | Website: the ESP32 website (`public/`) plus Cameras / Calibration and a display mirror; the server only logs in and passes protocol lines to pap-core |
-| `pap-motion` | `../octopus-fw/` | Octopus firmware (PlatformIO) |
+| `pap-motion` | `octopus-fw/` | Octopus firmware (PlatformIO) |
 
 ## Set up the Pi (Raspberry Pi OS Bookworm, 64-bit)
 
@@ -37,7 +37,7 @@ Wiring: [hardware/wiring.svg](hardware/wiring.svg) (made by `python hardware/wir
    sudo cp ~/pap/pi/deploy/pap-*.service /etc/systemd/system/
    sudo systemctl enable --now pap-core pap-web
    ```
-5. Flash the Octopus ([../octopus-fw/README.md](../octopus-fw/README.md)) and connect it to a USB 2 port.
+5. Flash the Octopus ([octopus-fw/README.md](octopus-fw/README.md)) and connect it to a USB 2 port.
    pap-core finds it by its USB name (`/dev/serial/by-id/*pap-motion*`), or give `--octopus /dev/ttyACM0`.
 6. Firmware updates from the Pi afterwards (no jumper, no SD card): `upload.bat` copies the built
    `octopus-fw/.pio/build/octopus/firmware.bin` to `~/pap/firmware/pap-motion.bin`, then

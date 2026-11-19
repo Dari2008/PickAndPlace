@@ -1,78 +1,130 @@
 # PickAndPlace
-
-A DIY SMD pick-and-place machine and paste dispenser built from a Creality CR-10S frame, a
-**Raspberry Pi 5** and a **BTT Octopus V1.1**. The head has a belt-driven *seesaw Z*: one motor lowers the
-vacuum picker while it raises the paste syringe, and the other way round. Next to it are a 5-slot Juki nozzle
-changer, tape feeders on their own gantry, an up-looking camera with an LED ring, a vacuum sensor and a 3.5"
-touch display with a joystick.
+![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-5-c51a4a)
+![C++](https://img.shields.io/badge/C++-17-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![PlatformIO](https://img.shields.io/badge/PlatformIO-STM32-orange)
+![CadQuery](https://img.shields.io/badge/CadQuery-3D%20models-green)
 
 <p align="center">
   <img src="images/renders/main-assembly.png" alt="Whole machine on its MDF base" width="720">
 </p>
 
-- **Software** (Pi setup, building, the display, the website, simulation): [SOFTWARE.md](SOFTWARE.md)
-- **3D models** (STEP, one folder per part): [models/](models/)
-- **Wiring**: [hardware/](hardware/)
 
----
-
-## Contents
-
-- [3D models](#3d-models)
-- [Electronics and schematics](#electronics-and-schematics)
+## Table of Contents
+- [Description](#description)
+- [Why I built it](#why-i-built-it)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Build Photos](#build-photos)
+- [3D Models](#3d-models)
+- [Electronics](#electronics)
+- [Controls](#controls)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Project Structure](#project-structure)
+- [Planned Features](#planned-features)
 - [Bill of materials](#bill-of-materials)
 - [Screws](#screws)
 - [Tools](#tools)
 
----
 
-## 3D models
+## Description
+PickAndPlace is a DIY SMD pick-and-place machine and solder paste dispenser built from an old Creality CR-10S.
+A **Raspberry Pi 5** runs everything (jobs, display, cameras, website), and a **BTT Octopus V1.1** with its own
+firmware only moves the motors.
+The head has a belt-driven *seesaw Z*: one motor lowers the vacuum picker while it raises the paste syringe,
+and the other way round.
+By now there are about 30,000 lines of code in about 170 files, plus about 8,000 lines of CadQuery for the
+3D models.
 
-All renders are made from the models in [models/](models/). Each folder holds the STEP files of that unit:
-`assembly.step` shows everything in place, and the other files are the single parts. Open them in FreeCAD,
-Fusion 360 or any other CAD program, or export the printed parts to STL for slicing.
+More details:
+- [SOFTWARE.md](SOFTWARE.md): Pi setup, building, the display, the website, simulation
+- [UI.md](UI.md): every screen, website page and setting
+- [BOM.csv](BOM.csv): the bill of materials as CSV
+
+
+## Why I built it
+I wanted to learn, and I wanted a project I could spend a lot of time on and end up with something cool.
+A pick-and-place machine was a good fit: it needs mechanics, electronics, firmware, computer vision and a user
+interface, and it turns an old CR-10S into a machine that builds my own PCBs.
+
+
+## Features
+- Seesaw Z head: picker and paste syringe on one motor
+- Solder paste dots set in microlitres
+- Nozzle rotation with a NEMA 8 hollow-shaft motor
+- Automatic nozzle changer with 5 Juki slots and a sensor in each slot
+- Bottom camera corrects the offset and rotation of every part
+- Top camera finds fiducials and tape pockets
+- Feeders on their own gantry, found by auto-detect and QR codes
+- Vacuum sensor catches failed picks and retries
+- Load cell measures the nozzle tip height
+- Sensorless homing (no limit switches needed)
+- 3.5" touch display with a joystick on the machine
+- Website with live cameras, step-by-step calibration and a display mirror
+- Firmware updates for the Octopus over USB from the Pi
+- Simulation mode: the full software runs without the machine
+
+
+## Requirements
+- Raspberry Pi 5 (a Pi 3B+ works as well) with Raspberry Pi OS Bookworm, 64-bit
+- BTT Octopus V1.1 with TMC2209 drivers
+- 12 V / 40 A power supply, plus 5 V / 5 A for the Pi
+- Two USB cameras (top and bottom)
+- A 3D printer for the printed parts
+- Node.js and `build-essential` on the Pi
+
+
+## Build Photos
+| | |
+|:-:|:-:|
+| <img src="images/current-status-irl.jpeg" alt="The machine so far" width="420"><br>The machine so far: frame, gantry, electronics on the MDF base | <img src="images/feeder-irl.jpeg" alt="Feeder rail" width="420"><br>Feeder rail with its cable chain |
+| <img src="images/head-mount-irl.jpeg" alt="Head" height="420"><br>The head on the X-carriage | <img src="images/raspi-irl.jpeg" alt="Raspberry Pi" width="420"><br>Raspberry Pi 5 with the carrier board in its housing |
+
+
+## 3D Models
+All renders are made from the STEP files in [models/](models/). Each folder holds one unit: `assembly.step` has
+everything in place, the other files are the single parts.
+The whole machine with all electronics is [models/main-assembly/assembly.step](models/main-assembly/assembly.step).
 
 ### Head (seesaw Z)
-
 <img src="images/renders/head-mount.png" alt="Head with seesaw Z" width="420" align="right">
 
-A 3 mm aluminium plate (82 × 218 mm) is bolted to the CR-10 X-carriage. Two MGN9 rails carry the tools. A
-NEMA17 at the top drives one 6 mm GT2 belt loop: the **picker** (NEMA 8 rotation head with a Juki nozzle) hangs
-on one side of the loop and the **paste syringe** on the other. When one goes down, the other comes up.
+A 3 mm aluminium plate on the CR-10 X-carriage with two MGN9 rails.
+A NEMA17 at the top drives one GT2 belt loop: the **picker** hangs on one side, the **paste syringe** on the other.
+When one goes down, the other comes up.
 
-- Travel ±62 mm to the hard stop, ±55 mm working stroke
-- An optical home sensor finds the centre
-- The top camera sits in front for fiducials and tape pockets
+- Travel ±62 mm, working stroke ±55 mm
+- Optical home sensor in the centre
+- Top camera in front
 
 [models/head-mount](models/head-mount/) · picker bracket: [models/nema8-90deg-mount](models/nema8-90deg-mount/)
 
 <br clear="right">
 
 ### Nozzle changer
-
 <img src="images/renders/juki-tool-changer.png" alt="Juki nozzle changer" width="300" align="right">
 
-Five slots for Juki 500 nozzles. The nozzle slides in from the front, and when the head lifts, the lid lip
-holds the collar and pulls the nozzle off. A TCRT5000 sensor behind each slot sees whether a nozzle is
-there.
+Five slots for Juki 500 nozzles.
+The nozzle slides in from the front, and when the head lifts, the lid holds the collar and pulls the nozzle off.
+A TCRT5000 sensor behind each slot sees if a nozzle is there.
 
 [models/juki-tool-changer](models/juki-tool-changer/)
 
 <br clear="right">
 
 ### Feeders
-
 <img src="images/renders/feeder.png" alt="Tape feeder on its gantry" width="420" align="right">
 
-Tape feeders for 7" reels ride on a rail of their own (the feeder gantry). Each feeder has a sprocket drive,
-a peel-off spool, a WS2812 status LED and a QR code that the top camera reads during auto-detect.
+Tape feeders for 7" reels on their own rail (the feeder gantry).
+Each feeder has a sprocket drive, a peel-off spool, a WS2812 status LED and a QR code.
 
 [models/feeder](models/feeder/)
 
 <br clear="right">
 
 ### More units
-
 | | | |
 |:-:|:-:|:-:|
 | <img src="images/renders/bottom-camera.png" width="240"><br>**Bottom camera**<br>up-looking camera with a 16-LED ring · [folder](models/bottom-camera/) | <img src="images/renders/pump-mount.png" width="240"><br>**Vacuum pump**<br>sits on springs to soak up vibration · [folder](models/pump-mount/) | <img src="images/renders/vacuum-sensor.png" width="240"><br>**Vacuum sensor**<br>sealed BMP280 housing on the hose · [folder](models/vacuum-sensor/) |
@@ -80,34 +132,31 @@ a peel-off spool, a WS2812 status LED and a QR code that the top camera reads du
 | <img src="images/renders/display-mount.png" width="240"><br>**Display console**<br>3.5" touch display and joystick · [folder](models/display-mount/) | <img src="images/renders/cr10s-display-adapter.png" width="240"><br>**CR-10S display adapter**<br>display in the original CR-10S box · [folder](models/cr10s-display-adapter/) | <img src="images/renders/chain-mount.png" width="240"><br>**Cable chain mount**<br>on a 2020 V-wheel carriage · [folder](models/chain-mount/) |
 | <img src="images/renders/cable-clamp.png" width="240"><br>**Cable clamps**<br>for round and flat cables · [folder](models/cable-clamp/) | <img src="images/renders/wire-holder.png" width="240"><br>**Wire holders**<br>on the MDF · [folder](models/wire-holder/) | <img src="images/renders/box-fan-mount.png" width="240"><br>**Box fan stand**<br>fan for the control box · [folder](models/box-fan-mount/) |
 
----
 
-## Electronics and schematics
-
-The **Pi 5** runs the jobs, the display, the cameras, the sensors and the website. The **Octopus** runs its own
-firmware: it only moves the 8 motors, reads the endstops and switches the 12 V outputs. The two talk over USB.
-
-### Carrier board for the Pi
-
-A small board on the Pi's 40-pin header. It holds the ADS1115 for the joystick, the buzzer, and connectors for
-the display, the vacuum sensor, the joystick and the start / pause / stop buttons.
-
+## Electronics
+### Carrier board schematic
 ![Carrier board schematic](images/schematic.png)
 
+A small board on the Pi's 40-pin header with the ADS1115 for the joystick, the buzzer, and connectors for the
+display, the vacuum sensor, the joystick and the start / pause / stop buttons.
+
+### PCB
 | Front | Back |
 |:-:|:-:|
 | ![PCB front layer](images/front-layer-pcb.png) | ![PCB back layer](images/back-layer-pcb.png) |
 
+Front and back layer of the carrier board.
+
 ### Wiring
-
-Every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus how the motors,
-inputs and outputs are laid out on the Octopus:
-
 ![Wiring: Raspberry Pi 5 and BTT Octopus](hardware/wiring.png)
 
-The Octopus connectors pin by pin:
+Every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus the motors, inputs and
+outputs on the Octopus.
 
+### Octopus pin by pin
 ![Octopus wiring, pin by pin](hardware/octopus-wiring.png)
+
+The Octopus connectors pin by pin.
 
 | Octopus slot | Motor |
 |---|---|
@@ -119,18 +168,113 @@ The Octopus connectors pin by pin:
 | DRV6 | Feeder gantry (sensorless homing) |
 | DRV7 | Y (sensorless homing) |
 
----
+
+## Controls
+### Display
+- Tap → press a button
+- Drag → scroll
+- Joystick up / down → move the focus
+- Joystick left → back
+- Joystick button → press
+- Hold the joystick button → back
+- Joystick on Move / Teach / Cameras → jog X / Y (button switches to Z / E1)
+
+### Website
+- `http://pickandplace.local`
+- Password → shown on the display under Menu → Network & website
+- Display page → click = touch
+
+All screens and settings are in [UI.md](UI.md).
+
+
+## Tech Stack
+- C++17 (`pap-core`: jobs, display, vision, Octopus link)
+- TypeScript + Node.js (`pap-web`: website)
+- PlatformIO / STM32 (`octopus-fw`: motion firmware)
+- LovyanGFX (display)
+- CadQuery (3D models)
+- EasyEDA / KiCad (carrier board)
+
+
+## Architecture
+The Pi does the thinking, the Octopus does the moving. They talk over USB with a simple text protocol.
+
+```
+ browser ──HTTP/WebSocket──> pap-web (TypeScript) ──TCP 127.0.0.1:7070──┐
+                                                                         v
+ display + touch + joystick <── UI thread ──── pap-core (C++) ── controller thread: jobs, feeders,
+ BMP280 / ADS1115 (I2C) ───────────────────────┘    │    settings, vision, calibration
+ USB cameras (V4L2) ───────────────────────────────-┘    └── USB ──> Octopus (motion, endstops, outputs)
+```
+
+- Vision runs without OpenCV
+- Settings live on the Pi (`~/pap-data`) and on the Octopus (machine values)
+- The Octopus stops by itself if the Pi goes silent while it moves
+
+
+## Installation
+### Pi
+First enable **SPI** and **I2C** in `sudo raspi-config` and set the hostname to `pickandplace`
+(the services expect the user `pnp`), then:
+```bash
+sudo apt install build-essential nodejs npm
+git clone https://github.com/Dari2008/PickAndPlace.git ~/pap
+cd ~/pap/core && make -j4
+cd ~/pap/web && npm install && npm run build
+sudo cp ~/pap/deploy/pap-*.service /etc/systemd/system/
+sudo systemctl enable --now pap-core pap-web
+```
+
+### Octopus
+Flash the firmware once by microSD card, after that the Pi can update it over USB:
+```bash
+cd octopus-fw
+pio run
+```
+See [octopus-fw/README.md](octopus-fw/README.md).
+
+### Without the machine
+```bash
+cd core && make -j8 && make test
+./build/pap-core --sim --data /tmp/pap --console
+```
+On Windows just double-click `ui-preview.cmd`. Everything is in [SOFTWARE.md](SOFTWARE.md).
+
+
+## Project Structure
+- core/        - pap-core (C++): jobs, display UI, vision, Octopus link
+- web/         - pap-web (TypeScript): website
+- octopus-fw/  - Octopus firmware (PlatformIO)
+- models/      - 3D models as STEP, one folder per unit
+- hardware/    - wiring diagrams
+- images/      - photos, renders, schematic and PCB
+- deploy/      - systemd services
+- tools/       - Windows preview of the display and website
+- BOM.csv      - bill of materials
+
+
+## Planned Features
+- [x] Software for the Pi and the Octopus (tested in the simulator)
+- [x] Carrier board for the Pi
+- [x] 3D models of every part
+- [ ] Flash the Octopus and test every axis on the real machine
+- [ ] Calibrate the cameras, vacuum and joystick
+- [ ] First real job
+- [ ] Vacuum table for the board
+
 
 ## Bill of materials
 
-Prices are what I paid (EUR, Nov 2026). The total is **about €668** for 48 items; €18 of that is optional.
-Tools are listed separately because you may already have them.
+Prices are what I paid (EUR, Nov 2026). The total is **about €678**: €668 for 48 items including the tools,
+plus about €10 shipping (Amazon shipped free). The Raspberry Pi is not counted, and €18 of the parts are
+optional. Tools are listed separately because you may already have them. The same list is in [BOM.csv](BOM.csv).
 
 ### Electronics and control
 
 | Part | Used for | Qty | Price | Shop |
 |---|---|:-:|--:|---|
 | [BIGTREETECH BTT Octopus V1.1, 32-bit, with TMC2209 drivers](https://de.aliexpress.com/item/1005002611546395.html) | Motion board: 8 motors, endstops, 12 V outputs | 1 | 54.66 | AliExpress |
+| Raspberry Pi 5, 8 GB | Main controller: jobs, display, cameras, website. *Not included in the total: I had it lying around. A Pi 3B+ works as well.* | 1 | – | – |
 | [diymore ESP32-S3 DevKitC-1 N16R8, 2 pcs](https://www.amazon.de/dp/B0FKBPJRQC) | Controller | 1 | 17.98 | Amazon |
 | [Binghe 3.5" TFT SPI touch display, ILI9488, 320 × 480](https://www.amazon.de/dp/B0G2C3NWFD) | Machine display | 1 | 14.99 | Amazon |
 | [leruiyezs ADS1115 ADC module, 16-bit, 4 ch, I2C](https://www.amazon.de/dp/B0G7CGFY8G) | Reads the joystick X / Y | 1 | 8.99 | Amazon |
@@ -241,3 +385,12 @@ Not part of the machine, but they make the build a lot easier:
 
 You'll also need a soldering iron (for the carrier board and for pressing in the heat-set inserts), a 3D
 printer and a drill.
+
+### Total
+
+| | EUR |
+|---|--:|
+| Machine parts | 627.45 |
+| Tools | 41.03 |
+| Shipping (about; Amazon shipped free) | 10.00 |
+| **Total** | **678.48** |
