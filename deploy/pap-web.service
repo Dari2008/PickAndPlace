@@ -1,0 +1,18 @@
+# /etc/systemd/system/pap-web.service  (see ../README.md)
+[Unit]
+Description=Pick & place website (proxy to pap-core)
+After=network.target pap-core.service
+
+[Service]
+User=pnp
+Group=pnp
+WorkingDirectory=/home/pnp/pap/web
+ExecStart=/usr/bin/node dist/server.js
+Environment=PAP_WEB_PORT=80 PAP_DATA=/home/pnp/pap-data
+# port 80 without root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

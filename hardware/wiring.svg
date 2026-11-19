@@ -1,0 +1,401 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='2200' height='1780' viewBox='0 0 2200 1780'>
+<rect width='2200' height='1780' fill='#fbfbf8'/>
+<text x='40' y='40' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='30' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>Pick &amp; Place - Raspberry Pi 5 + BTT Octopus V1.1: wiring</text>
+<text x='40' y='76' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='16' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>Pi = display, touch, joystick, vacuum sensor, cameras, website, jobs.  Octopus = all motors, Z flag, E-stop, MOSFET outputs.  Same colour = same wire. Pin numbers = physical header pins.</text>
+<text x='40' y='100' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='15' text-anchor='start' fill='#7b2cbf' font-weight='normal' dominant-baseline='middle'>ADS1115, buzzer and the connectors below are on the carrier board ../../board (schematic.png); this sheet shows the same nets as loose wiring.</text>
+<rect x='530' y='120' width='220' height='820' rx='14' fill='#0b6b3a' stroke='#063' stroke-width='2'/>
+<text x='640' y='138' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='15' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>Raspberry Pi 5  40-pin</text>
+<circle cx='600' cy='172' r='13' fill='#e07a00' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='173' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>1</text>
+<polyline points='586,172 500,172' fill='none' stroke='#e07a00' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='165' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#e07a00' font-weight='bold' dominant-baseline='middle'>3V3</text>
+<text x='494' y='182' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>ADS1115 VDD, BMP280 VCC + CSB, joystick +, touch</text>
+<circle cx='680' cy='172' r='13' fill='#d62828' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='173' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>2</text>
+<polyline points='694,172 780,172' fill='none' stroke='#d62828' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='165' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#d62828' font-weight='bold' dominant-baseline='middle'>5V</text>
+<text x='786' y='182' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display VCC (module LDO)</text>
+<circle cx='600' cy='210' r='13' fill='#059669' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='211' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>3</text>
+<polyline points='586,210 500,210' fill='none' stroke='#059669' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='203' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#059669' font-weight='bold' dominant-baseline='middle'>GPIO2 SDA1</text>
+<text x='494' y='220' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>ADS1115 SDA, BMP280 SDA</text>
+<circle cx='680' cy='210' r='13' fill='#d62828' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='211' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>4</text>
+<polyline points='694,210 780,210' fill='none' stroke='#d62828' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='203' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#d62828' font-weight='bold' dominant-baseline='middle'>5V</text>
+<text x='786' y='220' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>buzzer +</text>
+<circle cx='600' cy='248' r='13' fill='#059669' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='249' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>5</text>
+<polyline points='586,248 500,248' fill='none' stroke='#059669' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='241' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#059669' font-weight='bold' dominant-baseline='middle'>GPIO3 SCL1</text>
+<text x='494' y='258' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>ADS1115 SCL, BMP280 SCL</text>
+<circle cx='680' cy='248' r='13' fill='#222222' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='249' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>6</text>
+<polyline points='694,248 780,248' fill='none' stroke='#222222' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='241' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='786' y='258' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display GND</text>
+<circle cx='600' cy='286' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='287' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>7</text>
+<polyline points='586,286 500,286' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='279' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO4</text>
+<circle cx='680' cy='286' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='287' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>8</text>
+<polyline points='694,286 780,286' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='279' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO14 TXD</text>
+<circle cx='600' cy='324' r='13' fill='#222222' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='325' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>9</text>
+<polyline points='586,324 500,324' fill='none' stroke='#222222' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='317' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#222222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='494' y='334' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>I2C modules GND, joystick GND</text>
+<circle cx='680' cy='324' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='325' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>10</text>
+<polyline points='694,324 780,324' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='317' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO15 RXD</text>
+<circle cx='600' cy='362' r='13' fill='#ca8a04' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='363' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>11</text>
+<polyline points='586,362 500,362' fill='none' stroke='#ca8a04' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='355' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#ca8a04' font-weight='bold' dominant-baseline='middle'>GPIO17</text>
+<text x='494' y='372' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>joystick SW (to GND, internal pull-up)</text>
+<circle cx='680' cy='362' r='13' fill='#7c3aed' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='363' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>12</text>
+<polyline points='694,362 780,362' fill='none' stroke='#7c3aed' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='355' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#7c3aed' font-weight='bold' dominant-baseline='middle'>GPIO18</text>
+<text x='786' y='372' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display LED (backlight)</text>
+<circle cx='600' cy='400' r='13' fill='#db2777' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='401' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>13</text>
+<polyline points='586,400 500,400' fill='none' stroke='#db2777' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='393' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#db2777' font-weight='bold' dominant-baseline='middle'>GPIO27</text>
+<text x='494' y='410' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>buzzer: 1 kΩ -&gt; NPN base</text>
+<circle cx='680' cy='400' r='13' fill='#222222' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='401' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>14</text>
+<polyline points='694,400 780,400' fill='none' stroke='#222222' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='393' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='786' y='410' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>buzzer NPN emitter</text>
+<circle cx='600' cy='438' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='439' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>15</text>
+<polyline points='586,438 500,438' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='431' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO22</text>
+<circle cx='680' cy='438' r='13' fill='#0891b2' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='439' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>16</text>
+<polyline points='694,438 780,438' fill='none' stroke='#0891b2' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='431' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#0891b2' font-weight='bold' dominant-baseline='middle'>GPIO23</text>
+<text x='786' y='448' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>T_IRQ (optional)</text>
+<circle cx='600' cy='476' r='13' fill='#e07a00' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='477' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>17</text>
+<polyline points='586,476 500,476' fill='none' stroke='#e07a00' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='469' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#e07a00' font-weight='bold' dominant-baseline='middle'>3V3</text>
+<circle cx='680' cy='476' r='13' fill='#7c3aed' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='477' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>18</text>
+<polyline points='694,476 780,476' fill='none' stroke='#7c3aed' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='469' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#7c3aed' font-weight='bold' dominant-baseline='middle'>GPIO24</text>
+<text x='786' y='486' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display DC/RS</text>
+<circle cx='600' cy='514' r='13' fill='#1d4ed8' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='515' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>19</text>
+<polyline points='586,514 500,514' fill='none' stroke='#1d4ed8' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='507' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#1d4ed8' font-weight='bold' dominant-baseline='middle'>GPIO10 MOSI</text>
+<text x='494' y='524' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>display SDI + T_DIN</text>
+<circle cx='680' cy='514' r='13' fill='#222222' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='515' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>20</text>
+<polyline points='694,514 780,514' fill='none' stroke='#222222' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='507' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<circle cx='600' cy='552' r='13' fill='#1d4ed8' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='553' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>21</text>
+<polyline points='586,552 500,552' fill='none' stroke='#1d4ed8' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='545' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#1d4ed8' font-weight='bold' dominant-baseline='middle'>GPIO9 MISO</text>
+<text x='494' y='562' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>T_DO only (display SDO open)</text>
+<circle cx='680' cy='552' r='13' fill='#7c3aed' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='553' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>22</text>
+<polyline points='694,552 780,552' fill='none' stroke='#7c3aed' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='545' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#7c3aed' font-weight='bold' dominant-baseline='middle'>GPIO25</text>
+<text x='786' y='562' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display RESET</text>
+<circle cx='600' cy='590' r='13' fill='#1d4ed8' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='591' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>23</text>
+<polyline points='586,590 500,590' fill='none' stroke='#1d4ed8' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='583' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#1d4ed8' font-weight='bold' dominant-baseline='middle'>GPIO11 SCLK</text>
+<text x='494' y='600' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='end' fill='#555' font-weight='normal' dominant-baseline='middle'>display SCK + T_CLK</text>
+<circle cx='680' cy='590' r='13' fill='#7c3aed' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='591' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>24</text>
+<polyline points='694,590 780,590' fill='none' stroke='#7c3aed' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='583' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#7c3aed' font-weight='bold' dominant-baseline='middle'>GPIO8 CE0</text>
+<text x='786' y='600' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>display CS</text>
+<circle cx='600' cy='628' r='13' fill='#222222' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='629' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>25</text>
+<polyline points='586,628 500,628' fill='none' stroke='#222222' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='621' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#222222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<circle cx='680' cy='628' r='13' fill='#0891b2' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='629' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='white' font-weight='bold' dominant-baseline='middle'>26</text>
+<polyline points='694,628 780,628' fill='none' stroke='#0891b2' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='621' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#0891b2' font-weight='bold' dominant-baseline='middle'>GPIO7 CE1</text>
+<text x='786' y='638' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>T_CS</text>
+<circle cx='600' cy='666' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='667' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>27</text>
+<polyline points='586,666 500,666' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='659' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>ID_SD</text>
+<circle cx='680' cy='666' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='667' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>28</text>
+<polyline points='694,666 780,666' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='659' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>ID_SC</text>
+<circle cx='600' cy='704' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='705' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>29</text>
+<polyline points='586,704 500,704' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='697' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO5</text>
+<circle cx='680' cy='704' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='705' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>30</text>
+<polyline points='694,704 780,704' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='697' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GND</text>
+<circle cx='600' cy='742' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='743' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>31</text>
+<polyline points='586,742 500,742' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='735' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO6</text>
+<circle cx='680' cy='742' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='743' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>32</text>
+<polyline points='694,742 780,742' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='735' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO12</text>
+<circle cx='600' cy='780' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='781' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>33</text>
+<polyline points='586,780 500,780' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='773' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO13</text>
+<circle cx='680' cy='780' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='781' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>34</text>
+<polyline points='694,780 780,780' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='773' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GND</text>
+<circle cx='600' cy='818' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='819' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>35</text>
+<polyline points='586,818 500,818' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='811' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO19</text>
+<circle cx='680' cy='818' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='819' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>36</text>
+<polyline points='694,818 780,818' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='811' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO16</text>
+<circle cx='600' cy='856' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='857' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>37</text>
+<polyline points='586,856 500,856' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='849' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO26</text>
+<circle cx='680' cy='856' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='857' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>38</text>
+<polyline points='694,856 780,856' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='849' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO20</text>
+<circle cx='600' cy='894' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='600' y='895' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>39</text>
+<polyline points='586,894 500,894' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='494' y='887' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='end' fill='#999' font-weight='normal' dominant-baseline='middle'>GND</text>
+<circle cx='680' cy='894' r='13' fill='#e9e9e9' stroke='#111' stroke-width='1.5'/>
+<text x='680' y='895' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' fill='#666' font-weight='bold' dominant-baseline='middle'>40</text>
+<polyline points='694,894 780,894' fill='none' stroke='#ddd' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>
+<text x='786' y='887' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#999' font-weight='normal' dominant-baseline='middle'>GPIO21</text>
+<rect x='1060' y='120' width='520' height='466' rx='10' fill='#eef2ff' stroke='#333' stroke-width='2'/>
+<text x='1076' y='144' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>3.5" ILI9488 SPI display + XPT2046 touch</text>
+<text x='1076' y='166' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>SPI0 (dtparam=spi=on); display /dev/spidev0.0, touch /dev/spidev0.1</text>
+<rect x='1074' y='185' width='14' height='22' rx='3' fill='#d62828'/>
+<text x='1098' y='196' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>VCC</text>
+<text x='1210' y='196' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>5V  pin 2 (module with 3.3 V regulator)</text>
+<rect x='1074' y='213' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1098' y='224' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='1210' y='224' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND pin 6</text>
+<rect x='1074' y='241' width='14' height='22' rx='3' fill='#7c3aed'/>
+<text x='1098' y='252' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>CS</text>
+<text x='1210' y='252' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO8 CE0  pin 24</text>
+<rect x='1074' y='269' width='14' height='22' rx='3' fill='#7c3aed'/>
+<text x='1098' y='280' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>RESET</text>
+<text x='1210' y='280' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO25  pin 22</text>
+<rect x='1074' y='297' width='14' height='22' rx='3' fill='#7c3aed'/>
+<text x='1098' y='308' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>DC/RS</text>
+<text x='1210' y='308' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO24  pin 18</text>
+<rect x='1074' y='325' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1098' y='336' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SDI(MOSI)</text>
+<text x='1210' y='336' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO10  pin 19</text>
+<rect x='1074' y='353' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1098' y='364' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SCK</text>
+<text x='1210' y='364' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO11  pin 23</text>
+<rect x='1074' y='381' width='14' height='22' rx='3' fill='#7c3aed'/>
+<text x='1098' y='392' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>LED</text>
+<text x='1210' y='392' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO18  pin 12 (via the module transistor)</text>
+<rect x='1074' y='409' width='14' height='22' rx='3' fill='#c8c8c8'/>
+<text x='1098' y='420' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SDO(MISO)</text>
+<text x='1210' y='420' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>not connected (ILI9488 does not release it)</text>
+<rect x='1074' y='437' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1098' y='448' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>T_CLK</text>
+<text x='1210' y='448' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO11  pin 23 (with SCK)</text>
+<rect x='1074' y='465' width='14' height='22' rx='3' fill='#0891b2'/>
+<text x='1098' y='476' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>T_CS</text>
+<text x='1210' y='476' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO7 CE1  pin 26</text>
+<rect x='1074' y='493' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1098' y='504' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>T_DIN</text>
+<text x='1210' y='504' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO10  pin 19 (with SDI)</text>
+<rect x='1074' y='521' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1098' y='532' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>T_DO</text>
+<text x='1210' y='532' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO9 MISO  pin 21</text>
+<rect x='1074' y='549' width='14' height='22' rx='3' fill='#0891b2'/>
+<text x='1098' y='560' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>T_IRQ</text>
+<text x='1210' y='560' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO23  pin 16 (optional)</text>
+<rect x='1060' y='606' width='520' height='270' rx='10' fill='#ecfdf5' stroke='#333' stroke-width='2'/>
+<text x='1076' y='630' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>ADS1115 (joystick X / Y)</text>
+<text x='1076' y='652' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>I2C1 address 0x48 (ADDR -&gt; GND), gain ±4.096 V</text>
+<rect x='1074' y='671' width='14' height='22' rx='3' fill='#e07a00'/>
+<text x='1098' y='682' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>VDD</text>
+<text x='1210' y='682' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>3V3  pin 1</text>
+<rect x='1074' y='699' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1098' y='710' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='1210' y='710' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND  pin 9</text>
+<rect x='1074' y='727' width='14' height='22' rx='3' fill='#059669'/>
+<text x='1098' y='738' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SDA</text>
+<text x='1210' y='738' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO2  pin 3</text>
+<rect x='1074' y='755' width='14' height='22' rx='3' fill='#059669'/>
+<text x='1098' y='766' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SCL</text>
+<text x='1210' y='766' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO3  pin 5</text>
+<rect x='1074' y='783' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1098' y='794' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>ADDR</text>
+<text x='1210' y='794' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND</text>
+<rect x='1074' y='811' width='14' height='22' rx='3' fill='#ca8a04'/>
+<text x='1098' y='822' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>A0</text>
+<text x='1210' y='822' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>joystick VRx</text>
+<rect x='1074' y='839' width='14' height='22' rx='3' fill='#ca8a04'/>
+<text x='1098' y='850' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>A1</text>
+<text x='1210' y='850' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>joystick VRy</text>
+<rect x='1060' y='896' width='520' height='242' rx='10' fill='#ecfdf5' stroke='#333' stroke-width='2'/>
+<text x='1076' y='920' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>BMP280 3.3 V (vacuum line pressure)</text>
+<text x='1076' y='942' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>I2C1 address 0x76 (SDO -&gt; GND); sensor inside a small sealed box on the vacuum hose</text>
+<rect x='1074' y='961' width='14' height='22' rx='3' fill='#e07a00'/>
+<text x='1098' y='972' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>VCC</text>
+<text x='1210' y='972' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>3V3  pin 1</text>
+<rect x='1074' y='989' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1098' y='1000' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='1210' y='1000' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND  pin 9</text>
+<rect x='1074' y='1017' width='14' height='22' rx='3' fill='#059669'/>
+<text x='1098' y='1028' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SDA</text>
+<text x='1210' y='1028' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO2  pin 3</text>
+<rect x='1074' y='1045' width='14' height='22' rx='3' fill='#059669'/>
+<text x='1098' y='1056' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SCL</text>
+<text x='1210' y='1056' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO3  pin 5</text>
+<rect x='1074' y='1073' width='14' height='22' rx='3' fill='#e07a00'/>
+<text x='1098' y='1084' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>CSB</text>
+<text x='1210' y='1084' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>3V3 (selects I2C)</text>
+<rect x='1074' y='1101' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1098' y='1112' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SDO</text>
+<text x='1210' y='1112' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND (address 0x76)</text>
+<rect x='1610' y='120' width='560' height='214' rx='10' fill='#fefce8' stroke='#333' stroke-width='2'/>
+<text x='1626' y='144' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>PS2 joystick module</text>
+<text x='1626' y='166' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>powered from 3.3 V: centre = 1.65 V = ~13200 counts (joy_*_center)</text>
+<rect x='1624' y='185' width='14' height='22' rx='3' fill='#e07a00'/>
+<text x='1648' y='196' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>+5V</text>
+<text x='1760' y='196' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>3V3  pin 1 (NOT 5 V: ADS1115 inputs max VDD)</text>
+<rect x='1624' y='213' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1648' y='224' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>GND</text>
+<text x='1760' y='224' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND  pin 9</text>
+<rect x='1624' y='241' width='14' height='22' rx='3' fill='#ca8a04'/>
+<text x='1648' y='252' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>VRx</text>
+<text x='1760' y='252' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>ADS1115 A0</text>
+<rect x='1624' y='269' width='14' height='22' rx='3' fill='#ca8a04'/>
+<text x='1648' y='280' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>VRy</text>
+<text x='1760' y='280' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>ADS1115 A1</text>
+<rect x='1624' y='297' width='14' height='22' rx='3' fill='#ca8a04'/>
+<text x='1648' y='308' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>SW</text>
+<text x='1760' y='308' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GPIO17  pin 11 (pressed = LOW)</text>
+<rect x='1610' y='354' width='560' height='186' rx='10' fill='#fdf2f8' stroke='#333' stroke-width='2'/>
+<text x='1626' y='378' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>Buzzer (active, 5 V)</text>
+<text x='1626' y='400' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>MMBT2222A low-side switch, 1N4148W across a magnetic buzzer</text>
+<rect x='1624' y='419' width='14' height='22' rx='3' fill='#d62828'/>
+<text x='1648' y='430' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>buzzer +</text>
+<text x='1760' y='430' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>5V  pin 4</text>
+<rect x='1624' y='447' width='14' height='22' rx='3' fill='#db2777'/>
+<text x='1648' y='458' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>buzzer -</text>
+<text x='1760' y='458' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>NPN collector</text>
+<rect x='1624' y='475' width='14' height='22' rx='3' fill='#db2777'/>
+<text x='1648' y='486' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>NPN base</text>
+<text x='1760' y='486' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>1 kΩ to GPIO27  pin 13</text>
+<rect x='1624' y='503' width='14' height='22' rx='3' fill='#222222'/>
+<text x='1648' y='514' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>NPN emitter</text>
+<text x='1760' y='514' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>GND  pin 14</text>
+<rect x='1610' y='560' width='560' height='186' rx='10' fill='#eef2ff' stroke='#333' stroke-width='2'/>
+<text x='1626' y='584' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='18' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>USB</text>
+<text x='1626' y='606' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>Pi 5: two USB 3 (blue) + two USB 2 (black)</text>
+<rect x='1624' y='625' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1648' y='636' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>USB 3</text>
+<text x='1760' y='636' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>bottom camera (part rotation / offset)</text>
+<rect x='1624' y='653' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1648' y='664' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>USB 3</text>
+<text x='1760' y='664' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>top camera (fiducials, pockets, teaching)</text>
+<rect x='1624' y='681' width='14' height='22' rx='3' fill='#1d4ed8'/>
+<text x='1648' y='692' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>USB 2</text>
+<text x='1760' y='692' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>Octopus USB-C (STM32 USB CDC, /dev/ttyACM0)</text>
+<rect x='1624' y='709' width='14' height='22' rx='3' fill='#c8c8c8'/>
+<text x='1648' y='720' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'></text>
+<text x='1760' y='720' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>Octopus: leave the USB 5 V power jumper OFF</text>
+<rect x='40' y='960' width='380' height='360' rx='10' fill='#fff5f5' stroke='#333' stroke-width='2'/>
+<text x='56' y='986' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='20' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>Power</text>
+<text x='60' y='1024' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#d62828' font-weight='normal' dominant-baseline='middle'>12 V / 40 A supply</text>
+<text x='60' y='1048' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>  -&gt; Octopus MOTOR power (drivers)</text>
+<text x='60' y='1072' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>  -&gt; Octopus BED + MAIN power</text>
+<text x='60' y='1096' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#777' font-weight='normal' dominant-baseline='middle'>     (MAIN at 12 V: 12 V rail ~1 V low, OK)</text>
+<text x='60' y='1120' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>  TVS SMBJ15A + 100 uF at the Octopus input</text>
+<text x='60' y='1144' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#777' font-weight='normal' dominant-baseline='middle'>     (motor back-EMF on the 12 V rail)</text>
+<text x='60' y='1168' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#d62828' font-weight='normal' dominant-baseline='middle'>Pi 5: own 5 V / 5 A supply on USB-C</text>
+<text x='60' y='1192' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#777' font-weight='normal' dominant-baseline='middle'>  (27 W supply or 12 V -&gt; 5.1 V buck module)</text>
+<text x='60' y='1216' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>Carrier board: 5 V + 3.3 V from the Pi</text>
+<text x='60' y='1240' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>All GNDs common (Octopus, Pi).</text>
+<text x='60' y='1264' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>Pump / valve / top light: FAN5 / HE1 / FAN0,</text>
+<text x='60' y='1288' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14.5' text-anchor='start' fill='#333' font-weight='normal' dominant-baseline='middle'>  bottom light: NeoPixel ring (RGB header).</text>
+<rect x='40' y='1360' width='2120' height='380' rx='10' fill='#f4f4f5' stroke='#333' stroke-width='2'/>
+<text x='56' y='1388' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='20' text-anchor='start' fill='#222' font-weight='bold' dominant-baseline='middle'>BTT Octopus V1.1 (STM32F407ZET6, 8 x TMC2209 in UART mode) - own firmware ../../octopus-fw</text>
+<text x='60' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Slot</text>
+<text x='150' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Connector</text>
+<text x='280' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Axis</text>
+<text x='480' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Homing / note</text>
+<text x='60' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV0</text>
+<text x='150' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR0</text>
+<text x='280' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>X side 1  (x, mm)</text>
+<text x='480' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>sensorless: DIAG jumper 0 ON</text>
+<text x='60' y='1484' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV1</text>
+<text x='150' y='1484' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR1</text>
+<text x='280' y='1484' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>X side 2  (follows x)</text>
+<text x='480' y='1484' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>sensorless: DIAG jumper 1 ON</text>
+<text x='60' y='1512' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV2</text>
+<text x='150' y='1512' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR2_1</text>
+<text x='280' y='1512' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>paste extruder  (paste, µl)</text>
+<text x='480' y='1512' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>none</text>
+<text x='60' y='1540' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV3</text>
+<text x='150' y='1540' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR3</text>
+<text x='280' y='1540' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>nozzle rotation  (rot, °)</text>
+<text x='480' y='1540' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>none, SETPOS rot=0</text>
+<text x='60' y='1568' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV4</text>
+<text x='150' y='1568' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR4</text>
+<text x='280' y='1568' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>Z seesaw  (z, mm)</text>
+<text x='480' y='1568' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>half flag -&gt; DIAG2 (z_home = flag)</text>
+<text x='60' y='1596' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV5</text>
+<text x='150' y='1596' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR5</text>
+<text x='280' y='1596' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>feeder feed  (e0, °)</text>
+<text x='480' y='1596' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>none</text>
+<text x='60' y='1624' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV6</text>
+<text x='150' y='1624' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR6</text>
+<text x='280' y='1624' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>feeder gantry  (e1, mm)</text>
+<text x='480' y='1624' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>sensorless: DIAG jumper 6 ON</text>
+<text x='60' y='1652' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DRV7</text>
+<text x='150' y='1652' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>MOTOR7</text>
+<text x='280' y='1652' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>Y  (y, mm)</text>
+<text x='480' y='1652' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>sensorless: DIAG jumper 7 ON</text>
+<text x='60' y='1690' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='13' text-anchor='start' fill='#555' font-weight='normal' dominant-baseline='middle'>All driver slots: UART jumper fitted (no MS jumpers). DIAG jumpers on slots 0, 1, 6 and 7 (sensorless X both sides, gantry, Y), nowhere else.</text>
+<text x='1020' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Inputs (endstop connectors: only the Z flag and the E-stop are switches)</text>
+<text x='1020' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG0  X side 1 StallGuard (jumper, nothing plugged in)</text>
+<text x='1020' y='1478' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG1  X side 2 StallGuard (jumper, nothing plugged in)</text>
+<text x='1020' y='1500' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG2  Z flag (switch to GND)</text>
+<text x='1020' y='1522' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG3  Z max (optional)</text>
+<text x='1020' y='1544' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG4  feeder sensor (triggers at each feeder centre)</text>
+<text x='1020' y='1566' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG5  E-STOP button (NO to GND; NC button: SET in_invert_5 1)</text>
+<text x='1020' y='1588' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG6  gantry StallGuard (jumper)</text>
+<text x='1020' y='1610' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>DIAG7  Y StallGuard (jumper, nothing plugged in)</text>
+<text x='1020' y='1632' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>TFT header: tool changer board, RX pin 2 (PA10), GND pin 4, 5 V pin 5</text>
+<text x='1020' y='1654' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>   slot sensors as one byte, 9600 baud; pin by pin: octopus-wiring.png</text>
+<text x='1020' y='1676' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>Load cell HX711 on EXP1: DT = pin 3 (PE9), SCK = pin 4 (PE10), GND = pin 9</text>
+<text x='1020' y='1698' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>   VCC = 3.3 V LDO from EXP1 pin 10 (5 V); RATE pin to VCC (80/s)</text>
+<text x='1580' y='1426' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#555' font-weight='bold' dominant-baseline='middle'>Outputs (12 V MOSFETs)</text>
+<text x='1580' y='1456' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>FAN5  vacuum pump (12 V, jumper on VIN)</text>
+<text x='1580' y='1482' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>HE1  valve</text>
+<text x='1580' y='1508' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>RGB header (5V, DATA PB0, GND)</text>
+<text x='1580' y='1534' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>   NeoPixel ring = bottom camera light</text>
+<text x='1580' y='1560' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>FAN0  top camera light (12 V, always on,</text>
+<text x='1580' y='1586' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>   off while the bottom light is on)</text>
+<text x='1580' y='1612' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>FAN2  head camera fan (cam_fan %)</text>
+<text x='1580' y='1638' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>FAN3  housing fan (box_fan %)</text>
+<text x='1580' y='1664' font-family='Segoe UI, Helvetica, Arial, sans-serif' font-size='14' text-anchor='start' fill='#222' font-weight='normal' dominant-baseline='middle'>FAN4  Pi housing fan 30 mm (pi_fan %)</text>
+</svg>

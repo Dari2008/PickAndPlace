@@ -1,0 +1,17 @@
+# /etc/systemd/system/pap-core.service  (see ../README.md)
+[Unit]
+Description=Pick & place controller (jobs, display, cameras, Octopus link)
+After=network.target
+
+[Service]
+User=pnp
+Group=pnp
+SupplementaryGroups=gpio spi i2c video dialout
+ExecStart=/home/pnp/pap/core/build/pap-core --data /home/pnp/pap-data
+Restart=always
+RestartSec=2
+# The controller thread should not wait behind other programs
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

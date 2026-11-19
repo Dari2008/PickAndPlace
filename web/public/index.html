@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pick &amp; Place</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="loginForm" class="card login-card">
+    <h1>Pick &amp; Place</h1>
+    <p class="dim">The password is shown on the machine's display (Menu → Network &amp; website).</p>
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+    <button class="primary" type="submit">Log in</button>
+    <p id="loginError" class="error" hidden>Wrong password</p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand">Pick &amp; Place</div>
+    <nav id="nav">
+      <a data-view="dash" class="active">Dashboard</a>
+      <a data-view="jobs">Jobs</a>
+      <a data-view="feeders">Feeders</a>
+      <a data-view="move">Move</a>
+      <a data-view="nozzles">Nozzles</a>
+      <a data-view="cameras">Cameras</a>
+      <a data-view="calibrate">Calibrate</a>
+      <a data-view="display">Display</a>
+      <a data-view="settings">Settings</a>
+      <a data-view="console">Console</a>
+    </nav>
+    <div class="top-right">
+      <span id="linkPill" class="pill">offline</span>
+      <button class="danger small" id="estop" title="Stop everything at once">E-STOP</button>
+    </div>
+  </header>
+  <div id="alarm" class="banner bad" hidden></div>
+  <main id="view"></main>
+</div>
+
+<div id="modal" class="modal" hidden><div class="card modal-card" id="modalBody"></div></div>
+<div id="toast" class="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

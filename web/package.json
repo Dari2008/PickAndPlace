@@ -1,0 +1,19 @@
+{
+  "name": "pap-web",
+  "version": "1.0.0",
+  "description": "Pick & place website: serves public/ and proxies the controller protocol of pap-core (TCP 7070) over a WebSocket",
+  "private": true,
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node dist/server.js",
+    "test": "tsc -p . && node --test dist/test/web.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0"
+  }
+}

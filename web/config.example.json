@@ -1,0 +1,9 @@
+{
+  "port": 80,
+  "bind": "0.0.0.0",
+  "coreHost": "127.0.0.1",
+  "corePort": 7070,
+  "data": "/home/pi/pap-data",
+  "publicDir": "public",
+  "maxUpload": 8388608
+}
