@@ -123,7 +123,7 @@ The Octopus connectors pin by pin:
 
 ## Bill of materials
 
-Prices are what I paid (EUR, Nov 2026). The total is **about €623** for 47 items; €18 of that is optional.
+Prices are what I paid (EUR, Nov 2026). The total is **about €668** for 48 items; €18 of that is optional.
 Tools are listed separately because you may already have them.
 
 ### Electronics and control
@@ -148,11 +148,12 @@ Tools are listed separately because you may already have them.
 
 | Part | Used for | Qty | Price | Shop |
 |---|---|:-:|--:|---|
+| Creality CR-10S | Base machine: frame, profiles, X-carriage, control box housing | 1 | 45.00 | Kleinanzeigen (only in Germany) |
 | [STEPPERONLINE NEMA 17, 42 Ncm, 1.5 A, 5 pcs](https://www.amazon.de/dp/B0B38H2ZMR) | X / Y / Z / feeder motors | 1 | 35.00 | Amazon |
 | [QitinDasen GT2 belt 6 mm, 5 m, with pulleys, idlers, tensioners](https://www.amazon.de/dp/B07SHB3NBV) | Seesaw Z belt, feeder gantry | 1 | 15.49 | Amazon |
 | [Cable chain, 1 m](https://www.aliexpress.com/item/1005007435939757.html) | Cables to the head | 1 | 7.30 | AliExpress |
 | [Caianwin M3 T-slot hammer nuts, 20-series, 100 pcs](https://www.amazon.de/dp/B0D3HJJS47) | Mounting parts on the 2020 profiles | 1 | 4.99 | Amazon |
-| | | | **62.78** | |
+| | | | **107.78** | |
 
 ### Head and nozzle
 
