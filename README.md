@@ -1,254 +1,242 @@
-# Pick & place on a Raspberry Pi 5 + BTT Octopus V1.1
+# PickAndPlace
 
-The Pi 5 is the main controller: jobs, feeders, settings, the 3.5" display with touch and joystick, the
-vacuum sensor, two USB cameras and the website. The Octopus (own firmware, [../octopus-fw](../octopus-fw))
-only moves the 8 motors, reads the endstops and switches the 12 V outputs. They talk over USB with the same
-text protocol as before ([../protocol.md](../protocol.md)).
+A DIY SMD pick-and-place machine and paste dispenser built from a Creality CR-10S frame, a
+**Raspberry Pi 5** and a **BTT Octopus V1.1**. The head has a belt-driven *seesaw Z*: one motor lowers the
+vacuum picker while it raises the paste syringe, and the other way round. Next to it are a 5-slot Juki nozzle
+changer, tape feeders on their own gantry, an up-looking camera with an LED ring, a vacuum sensor and a 3.5"
+touch display with a joystick.
 
-Design: [../docs/superpowers/specs/2026-10-24-pi5-octopus-design.md](../docs/superpowers/specs/2026-10-24-pi5-octopus-design.md) ·
-Wiring: [hardware/wiring.svg](hardware/wiring.svg) (made by `python hardware/wiring.py hardware/wiring.svg`), Octopus connectors pin by pin: [hardware/octopus-wiring.png](hardware/octopus-wiring.png) (`hardware/octopus_wiring.py`)
+<p align="center">
+  <img src="images/renders/main-assembly.png" alt="Whole machine on its MDF base" width="720">
+</p>
 
-```
- browser ──HTTP/WebSocket──> pap-web (TypeScript, pi/web) ──TCP 127.0.0.1:7070──┐
-                                                                                 v
- display + touch + joystick <── UI thread ──── pap-core (C++, pi/core) ── controller thread: jobs, feeders,
- BMP280 / ADS1115 (I2C) ───────────────────────┘    │    settings, vision, calibration
- USB cameras (V4L2) ───────────────────────────────-┘    └── USB ──> Octopus (motion, endstops, outputs)
-```
+- **Software** (Pi setup, building, the display, the website, simulation): [SOFTWARE.md](SOFTWARE.md)
+- **3D models** (STEP, one folder per part): [models/](models/)
+- **Wiring**: [hardware/](hardware/)
 
-| Part | Folder | What |
-|---|---|---|
-| `pap-core` | `core/` | The ported ATmega job runner / feeders / settings (`ctrl/`), the ported ESP32 display UI (`ui/esp/`) plus the new screens, the Octopus link (`octo/`), cameras and vision without OpenCV (`vision/`), I2C / GPIO / SPI drivers (`hal/`, `dev/`), TCP command port (`api/`) |
-| `pap-web` | `web/` | Website: the ESP32 website (`public/`) plus Cameras / Calibration and a display mirror; the server only logs in and passes protocol lines to pap-core |
-| `pap-motion` | `../octopus-fw/` | Octopus firmware (PlatformIO) |
+---
 
-## Set up the Pi (Raspberry Pi OS Bookworm, 64-bit)
+## Contents
 
-1. `sudo raspi-config` → Interface Options → enable **SPI** and **I2C**. Set the hostname to `pickandplace`
-   (the website is then `http://pickandplace.local`).
-2. Plug the carrier board ([../board/](../board/README.md): ADS1115, buzzer, connectors) onto the Pi, or wire the
-   same nets by hand as in [hardware/wiring.svg](hardware/wiring.svg). The Pi has its own 5 V / 5 A supply on USB-C
-   (with less than 5 A, add `usb_max_current_enable=1` to `/boot/firmware/config.txt`: the cameras need the USB current).
-3. Packages: `sudo apt install build-essential nodejs npm`
-4. Code to `/home/pi/pap` (this repository), then:
-   ```
-   cd ~/pap/pi/core && make -j4          # -> build/pap-core   (make NO_UI=1: without display)
-   cd ~/pap/pi/web  && npm install && npm run build
-   sudo cp ~/pap/pi/deploy/pap-*.service /etc/systemd/system/
-   sudo systemctl enable --now pap-core pap-web
-   ```
-5. Flash the Octopus ([../octopus-fw/README.md](../octopus-fw/README.md)) and connect it to a USB 2 port.
-   pap-core finds it by its USB name (`/dev/serial/by-id/*pap-motion*`), or give `--octopus /dev/ttyACM0`.
-6. Firmware updates from the Pi afterwards (no jumper, no SD card): `upload.bat` copies the built
-   `octopus-fw/.pio/build/octopus/firmware.bin` to `~/pap/firmware/pap-motion.bin`, then
-   `sudo systemctl stop pap-core && ~/pap/core/build/pap-core --flash` (or `--flash other.bin`). It sends `DFU`
-   (the board restarts into the STM32 ROM bootloader), runs dfu-util, waits for the board and then runs as usual.
-   Once:
-   ```
-   sudo apt install dfu-util
-   echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="df11", MODE="0666"' | sudo tee /etc/udev/rules.d/49-stm32-dfu.rules
-   sudo udevadm control --reload-rules
-   ```
-   The firmware on the board must already know `DFU` (from 18 Nov 2026 on): flash that one by microSD card once.
+- [3D models](#3d-models)
+- [Electronics and schematics](#electronics-and-schematics)
+- [Bill of materials](#bill-of-materials)
+- [Screws](#screws)
+- [Tools](#tools)
 
-The website password is shown on the display (Menu → Network & website) and stored in `~/pap-data/web.txt`.
+---
 
-## Display and website preview on Windows
+## 3D models
 
-Double-click **`ui-preview.cmd`** (or `node pi/tools/ui-preview.cjs`). It builds pap-core in WSL (first time ~2 min),
-runs it in simulation and opens two browser tabs:
+All renders are made from the models in [models/](models/). Each folder holds the STEP files of that unit:
+`assembly.step` shows everything in place, and the other files are the single parts. Open them in FreeCAD,
+Fusion 360 or any other CAD program, or export the printed parts to STL for slicing.
 
-- the display at http://127.0.0.1:8090: click = touch, drag = scroll, wheel / arrow keys / the on-screen stick =
-  joystick, Enter = joystick button, Esc = back. Only display input is sent.
-- the website at http://localhost:8080 (pi/web on Windows Node, against the same simulated machine). The login
-  password is printed in the console window (also on the display: Settings → Network & website).
+### Head (seesaw Z)
 
-Nothing real is controlled. Needs Node.js on Windows and WSL with `build-essential`; the website needs
-`cd pi/web && npm install && npm run build` once. Data lives in WSL `~/.pap-preview/` (the example jobs from
-`../pap-syntax` are copied into its `jobs/`). Options: `--port`, `--web-port`, `--no-web`, `--no-browser`.
+<img src="images/renders/head-mount.png" alt="Head with seesaw Z" width="420" align="right">
 
-## Running and testing without the machine
+A 3 mm aluminium plate (82 × 218 mm) is bolted to the CR-10 X-carriage. Two MGN9 rails carry the tools. A
+NEMA17 at the top drives one 6 mm GT2 belt loop: the **picker** (NEMA 8 rotation head with a Juki nozzle) hangs
+on one side of the loop and the **paste syringe** on the other. When one goes down, the other comes up.
 
-```
-cd pi/core && make -j8 && make test                     # 104 checks, simulated Octopus + cameras
-./build/pap-core --sim --data /tmp/pap --console        # type protocol commands; display renders into memory
-cd pi/web && npm install && npm test                    # 6 tests (fake core)
-PAP_DATA=/tmp/pap PAP_WEB_PORT=8080 node dist/server.js # website against the simulator: http://localhost:8080
-```
+- Travel ±62 mm to the hard stop, ±55 mm working stroke
+- An optical home sensor finds the centre
+- The top camera sits in front for fiducials and tape pockets
 
-`--sim` simulates the Octopus (moves, homing, feeder switch), both cameras (a part on the nozzle, a fiducial)
-and the sensors. `PAP_SIM_SPEED=25` runs moves 25 × faster. The website's **Display** page mirrors the screen
-(also works with the real display) and accepts clicks as touches.
+[models/head-mount](models/head-mount/) · picker bracket: [models/nema8-90deg-mount](models/nema8-90deg-mount/)
 
-pap-core options: `--data <dir>` (default `~/pap-data`), `--octopus <tty|sim>`, `--sim`, `--no-display`,
-`--api-port 7070`, `--api-bind 127.0.0.1`, `--console`.
+<br clear="right">
 
-## Display
+### Nozzle changer
 
-Same screens as the ESP32 (drawn at 480 × 320), plus:
+<img src="images/renders/juki-tool-changer.png" alt="Juki nozzle changer" width="300" align="right">
 
-- **Settings**: search on top, then every setting of the Pi and the Octopus in 22 groups (job, paste, vacuum,
-  nozzle changer, feeders, vision, cameras, lights, homing, one group per axis, joystick, safety …), each with
-  its unit, range and a one-line description; numbers open the number editor, switches toggle, choices open a
-  list. The website's Settings page shows the same list with a search box. The list lives in
-  `core/ctrl/settings/catalog.cpp` (add new settings there).
+Five slots for Juki 500 nozzles. The nozzle slides in from the front, and when the head lifts, the lid lip
+holds the collar and pulls the nozzle off. A TCRT5000 sensor behind each slot sees whether a nozzle is
+there.
 
-- **Menu → Cameras**: live picture of the top / bottom camera, light on / off, measure the part (bottom) or find
-  a mark (top), save a picture; the joystick moves the head. Whatever a camera finds is outlined in green in
-  the live picture (display and website) for 4 s: a circle around a fiducial or the nozzle tip, a rotated
-  rectangle around the part on the nozzle, a box around a tape pocket, the outline of a QR code. This works
-  for detections from jobs, calibration and auto detect too. Saved pictures (`/captures`) stay without
-  outlines.
-- **Menu → Calibration**: bottom camera, top camera, top camera offset (2 steps), rotation direction, vacuum
-  sensor, joystick (centre, range, invert).
-- **Website → Calibrate**: everything in one tab, in the order to do it. On the left are the live camera
-  picture, jog buttons and the position, with links to the sections. The sections are:
-  1. axis steps per mm (move, measure, correct)
-  2. head reach and paste tip offset
-  3. bottom camera
-  4. top camera and its offset
-  5. load cell (tare, force, pad position and height, touch off)
-  6. nozzle rack positions and heights
-  7. vacuum sensor
-  8. paste extruder (test dot)
-  9. feeder QR position and reject position
-  10. joystick
+[models/juki-tool-changer](models/juki-tool-changer/)
 
-  Each step either measures something or takes over the current position. Under each section are the settings
-  it changes, and they can be edited there.
-- **Move / Teach**: the joystick jogs X / Y proportionally (Z / E1 when that axis is chosen with the button);
-  elsewhere up / down moves the focus, left = back, button = press, hold = back.
+<br clear="right">
 
-Display preferences (touch calibration, backlight, rotation) are in `~/pap-data/ui.txt`.
+### Feeders
 
-## Jobs on the Pi, the Octopus SD card
+<img src="images/renders/feeder.png" alt="Tape feeder on its gantry" width="420" align="right">
 
-Jobs are stored and run on the Pi (`~/pap-data/jobs`; upload them on the website). The microSD in the Octopus
-slot can still be read: display Settings → *Motion board SD card*, or website Settings → *Motion board SD card*.
-Pick a file and it is copied to `/jobs` on the Pi, then run from there (`OCTOSD LS` / `OCTOSD COPY`).
+Tape feeders for 7" reels ride on a rail of their own (the feeder gantry). Each feeder has a sprocket drive,
+a peel-off spool, a WS2812 status LED and a QR code that the top camera reads during auto-detect.
 
-## Sensors
+[models/feeder](models/feeder/)
 
-Menu → Testing → Sensors (and website Move → Sensors) shows everything live: Z flag, E-stop and feeder
-sensor, the StallGuard stall signals of X, Y and the gantry (sensorless homing, no switches), the vacuum
-(hPa, drop, part on the nozzle), every nozzle slot sensor and the joystick.
+<br clear="right">
 
-## Feeders: QR codes, feeder sensor, teeth
+### More units
 
-- **Finding feeders:** auto detect (display Feeders → Auto detect, website Feeders, `SCAN`) drives the feeder
-  gantry (E1) along the rail. Each feeder's sensor (DIAG4) triggers at the centre of its pickup area: that E1
-  position is the feeder's `pos`. Then the head moves the top camera over the feeder's **QR code** and reads it.
-- **QR text:** `F07;name=100n 0402;part=C1525;teeth=2` (the first field is the feeder ID; the rest optional).
-- **Where the codes are:** jog the top camera onto one feeder's code, then website Feeders → feeder → *Teach QR
-  position* (`FEEDER QR TEACH <n>`). For a rail along X that's all (`feeder_qr_dx` = 1); otherwise set
-  `feeder_qr_dx` / `_dy`. X / Y must be homed for the scan (the head carries the camera).
-- **Advance:** the feed wheel has `feeder_wheel_teeth` = 20 teeth; set each feeder's *teeth per advance*
-  (2 teeth = 36°). The old degree value still works when teeth = 0.
+| | | |
+|:-:|:-:|:-:|
+| <img src="images/renders/bottom-camera.png" width="240"><br>**Bottom camera**<br>up-looking camera with a 16-LED ring · [folder](models/bottom-camera/) | <img src="images/renders/pump-mount.png" width="240"><br>**Vacuum pump**<br>sits on springs to soak up vibration · [folder](models/pump-mount/) | <img src="images/renders/vacuum-sensor.png" width="240"><br>**Vacuum sensor**<br>sealed BMP280 housing on the hose · [folder](models/vacuum-sensor/) |
+| <img src="images/renders/control-box.png" width="240"><br>**Control box**<br>CR-10S housing with the Octopus and display · [folder](models/control-box/) | <img src="images/renders/octopus-mount.png" width="240"><br>**Octopus mount**<br>board and driver fans on the MDF · [folder](models/octopus-mount/) | <img src="images/renders/pi-housing.png" width="240"><br>**Pi housing**<br>Pi 5, carrier board and a 30 mm fan · [folder](models/pi-housing/) |
+| <img src="images/renders/display-mount.png" width="240"><br>**Display console**<br>3.5" touch display and joystick · [folder](models/display-mount/) | <img src="images/renders/cr10s-display-adapter.png" width="240"><br>**CR-10S display adapter**<br>display in the original CR-10S box · [folder](models/cr10s-display-adapter/) | <img src="images/renders/chain-mount.png" width="240"><br>**Cable chain mount**<br>on a 2020 V-wheel carriage · [folder](models/chain-mount/) |
+| <img src="images/renders/cable-clamp.png" width="240"><br>**Cable clamps**<br>for round and flat cables · [folder](models/cable-clamp/) | <img src="images/renders/wire-holder.png" width="240"><br>**Wire holders**<br>on the MDF · [folder](models/wire-holder/) | <img src="images/renders/box-fan-mount.png" width="240"><br>**Box fan stand**<br>fan for the control box · [folder](models/box-fan-mount/) |
 
-## Camera lights
+---
 
-- Bottom: NeoPixel ring on the Octopus RGB header (5 V / DATA / GND), `neo_count` LEDs.
-- Top: Octopus FAN0 (12 V LEDs), always on (`light_top_idle`), off by itself whenever the bottom light is on.
-- A plain 12 V bottom ring instead of the NeoPixels: FAN1, follows the bottom light.
+## Electronics and schematics
 
-## Vacuum pump
+The **Pi 5** runs the jobs, the display, the cameras, the sensors and the website. The **Octopus** runs its own
+firmware: it only moves the 8 motors, reads the endstops and switches the 12 V outputs. The two talk over USB.
 
-- 12 V pump (400 mA max) on Octopus FAN5, voltage jumper on VIN (the 12 V supply). `pump_power` % when on.
-- **Pump connected** (`pump_used`, Settings → Vacuum & outputs, display: Pump, valve & fans): off = no pump
-  fitted. Every pump command (job, buttons, website, vacuum calibration) then leaves FAN5 off and answers ok, so
-  jobs run on with just the valve (e.g. with an outside vacuum source). The home screen shows NO PUMP, the website
-  "not connected". Stored on the Octopus like the other output settings.
+### Carrier board for the Pi
 
-## Fans
+A small board on the Pi's 40-pin header. It holds the ADS1115 for the joystick, the buzzer, and connectors for
+the display, the vacuum sensor, the joystick and the start / pause / stop buttons.
 
-- Head camera fan: Octopus FAN2, always on at `cam_fan` % (default 50, Settings → Vacuum & outputs).
-- Housing fan (control box rear wall): FAN3, always on at `box_fan` % (default 100).
-- Pi housing fan (30 mm, 12 V, in `../models/pi-housing`): FAN4 with its voltage jumper on 12 V, always on at
-  `pi_fan` % (default 100).
-- Both keep running through an e-stop. There is no part fan / aux output any more (not a 3D printer).
+![Carrier board schematic](images/schematic.png)
 
-## Nozzle changer
+| Front | Back |
+|:-:|:-:|
+| ![PCB front layer](images/front-layer-pcb.png) | ![PCB back layer](images/back-layer-pcb.png) |
 
-A rack of push-on nozzles (`nozzle_count` slots, max 8). Each slot has a sensor; the tool changer board
-([../../ToolChanger](../../ToolChanger)) sends them to the Octopus as one byte, 5 times a second, on one wire to the
-TFT header (pin 2, plus GND pin 4 and 5 V pin 5). Set it up on the display (Menu → Nozzles) or the website (Nozzles):
+### Wiring
 
-1. Teach slot 1 and the last slot (jog the nozzle holder over them); the slots between are spaced evenly.
-2. Push-on height (`nozzle_z_pick`) and park height (`nozzle_z_drop`): seesaw Z, negative = nozzle side down.
-   If the slots need the nozzle slid in / out sideways, set `nozzle_slide_x` / `_y`.
-3. Name the nozzles (`CN040`, …) and set a tip offset only if a nozzle is off-centre (default 0 / 0).
-4. Sensor order: Calibration → Nozzle sensor order on the display, or Calibrate → Nozzle rack on the website. Trigger
-   the slots in order, 1 first (nozzle in or out, or a finger on the sensor). Each new bit that changes goes to the
-   next slot, and `nozzle_bit_n` is stored once every slot has its bit. Cancel leaves the old order. Then check
-   `NOZZLES`: `present=1` for every slot with a nozzle; if it reads the other way, `SET nozzle_sensor_invert 1`.
-5. Calibrate the bottom camera first (Calibration order below): after every pick-up the head goes over the
-   bottom camera, finds the nozzle tip and stores its offset (`nozzle_calibrate` = 1).
+Every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus how the motors,
+inputs and outputs are laid out on the Octopus:
 
-Changing: put the mounted nozzle back into its slot (lower to the park height, lift: the slot keeps it, its
-sensor must see it), then pick the new one up (sensor must see it first; lower to the push-on height, lift:
-the slot must be empty). A check waits up to 1 s for the sensor byte to catch up. Any check that fails stops with
-an error, and so does a silent tool changer board. Jobs: `nozzle = CN040` in `[job]` or per
-`[part]`; the machine changes before a pick when the part needs another nozzle, and adds that nozzle's tip
-offset to the pick and place positions.
+![Wiring: Raspberry Pi 5 and BTT Octopus](hardware/wiring.png)
 
-## Load cell (nozzle tip height)
+The Octopus connectors pin by pin:
 
-A load cell under a small pad, read by an HX711 board on the Octopus EXP1, one connector (DT = EXP1 pin 3, SCK = EXP1
-pin 4, GND = EXP1 pin 9, VCC = 3.3 V from a small LDO fed from EXP1 pin 10 (5 V); RATE pin to VCC). The Octopus stops the seesaw itself the moment
-the tip presses the pad (`PROBE z=`), so the stop does not wait for the Pi.
+![Octopus wiring, pin by pin](hardware/octopus-wiring.png)
 
-1. Settings → Load cell: `loadcell` on, `loadcell_x` / `_y` = machine position with the vacuum nozzle over the
-   pad, `loadcell_height` = pad surface above the bed (same zero as the board surface).
-2. Calibrate the force once: Console `LOADCELL TARE`, put a known weight on the pad, `LOADCELL CAL 100`
-   (grams). Only the trigger force depends on it (`lc_trigger`, 30 g).
-3. Nozzles → *Touch off on the load cell* (`NOZZLE TOUCH`): measures the nozzle on the head. Without a nozzle
-   changer it sets `head2_reach`; with one it stores that nozzle's `dz` (tip height compared to `head2_reach`).
-4. `nozzle_touchoff` = 1 (default): every nozzle change ends with a touch-off, after the bottom camera has
-   centred the tip. Jobs use `head2_reach + dz` for every pick and place height.
+| Octopus slot | Motor |
+|---|---|
+| DRV0 / DRV1 | X, both sides (sensorless homing) |
+| DRV2 | Z seesaw (home flag) |
+| DRV3 | Nozzle rotation (NEMA 8) |
+| DRV4 | Paste extruder |
+| DRV5 | Feeder feed |
+| DRV6 | Feeder gantry (sensorless homing) |
+| DRV7 | Y (sensorless homing) |
 
-## New settings (`GET` / `SET`, website → Settings)
+---
 
-| Key | Default | Meaning |
-|---|---|---|
-| `cam_bottom_dev`, `cam_top_dev` | `/dev/video0`, `/dev/video2` | camera devices (better: `/dev/v4l/by-id/...`) |
-| `cam_*_w`, `cam_*_h`, `cam_*_exposure`, `cam_*_thresh` | 1280, 720, -1, -1 | size, exposure (-1 auto), threshold (-1 Otsu) |
-| `cam_*_m00` `m01` `m10` `m11` | 0.02 / 0 / 0 / 0.02 | pixel → mm matrix: scale, rotation **and skew** (calibration) |
-| `cam_bottom_cx`, `cam_bottom_cy` | -1 | nozzle centre in the bottom picture (calibration) |
-| `cam_bottom_x` `_y` `_z` | 0 | where the nozzle is over the bottom camera |
-| `cam_top_off_x`, `cam_top_off_y` | 0 | top camera relative to the nozzle |
-| `cam_bottom_rot_sign`, `cam_bottom_invert`, `cam_settle_ms` | 1, 0, 150 | rotation direction, dark parts, settle time |
-| `vac_baseline`, `vac_pick_min`, `vac_check`, `vac_retries`, `vac_wait_ms` | 1013.25, 150, 1, 1, 150 | vacuum sensor |
-| `joy_x_min/_center/_max`, `joy_y_*` | 0 / 13200 / 26400 | joystick calibration (raw ADS1115) |
-| `joy_deadzone`, `joy_invert_x/_y`, `joy_swap`, `joy_jog_speed`, `joy_hold_ms` | 8, 0, 0, 50, 800 | joystick behaviour |
-| `vision_parts`, `vision_fiducials`, `vision_pockets`, `vision_place_check`, `vision_required` | 1, 0, 0, 0, 0 | what the cameras do in a job |
-| `nozzle_count`, `nozzle_first_x/_y`, `nozzle_last_x/_y`, `nozzle_z_pick`, `nozzle_z_drop`, `nozzle_z_safe`, `nozzle_slide_x/_y`, `nozzle_speed`, `nozzle_wait_ms`, `nozzle_sensor_invert`, `nozzle_check` | 5, 0…, -8, -8, 0, 0, 5, 200, 0, 1 | nozzle changer (above, protocol.md) |
-| `loadcell`, `loadcell_x/_y`, `loadcell_height`, `loadcell_speed`, `loadcell_slow`, `loadcell_backoff`, `loadcell_depth`, `nozzle_touchoff` | 0, 0, 0, 3, 0.3, 0.5, 4, 1 | load cell touch-off (above) |
+## Bill of materials
 
-Motion settings (`steps_x`, `tmc_cur_x`, …) are forwarded to the Octopus and stored in `~/pap-data/machine.txt`;
-pap-core sends them again whenever the Octopus connects.
+Prices are what I paid (EUR, Nov 2026). The total is **about €623** for 47 items; €18 of that is optional.
+Tools are listed separately because you may already have them.
 
-## Calibration order (display or website → Cameras)
+### Electronics and control
 
-1. Joystick: Centre (let go), then Range (circle the stick for 5 s).
-2. Vacuum: Baseline with the pump off; pump on with the nozzle open, then blocked (sets `vac_pick_min`).
-3. Bottom camera: nozzle tip in the bottom camera's picture, light on → **CAL BOTTOM** (scale, skew, rotation
-   centre, `cam_bottom_x/_y/_z`).
-4. Top camera: camera centred above a mark on the bed → **CAL TOP**.
-5. Top camera offset: nozzle tip exactly on a mark → step 1/2; camera roughly above it → step 2/2.
-6. Rotation direction: a part on the nozzle over the bottom camera → **CAL ROTSIGN**.
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [BIGTREETECH BTT Octopus V1.1, 32-bit, with TMC2209 drivers](https://de.aliexpress.com/item/1005002611546395.html) | Motion board: 8 motors, endstops, 12 V outputs | 1 | 54.66 | AliExpress |
+| [diymore ESP32-S3 DevKitC-1 N16R8, 2 pcs](https://www.amazon.de/dp/B0FKBPJRQC) | Controller | 1 | 17.98 | Amazon |
+| [Binghe 3.5" TFT SPI touch display, ILI9488, 320 × 480](https://www.amazon.de/dp/B0G2C3NWFD) | Machine display | 1 | 14.99 | Amazon |
+| [leruiyezs ADS1115 ADC module, 16-bit, 4 ch, I2C](https://www.amazon.de/dp/B0G7CGFY8G) | Reads the joystick X / Y | 1 | 8.99 | Amazon |
+| [Hall effect analog sticks (PS5), pack of 4](https://www.amazon.de/dp/B0D7CVV966) | Joystick | 1 | 9.99 | Amazon |
+| [QIQIAZI DC-DC buck converter, 10–90 V to 5 V 5 A, USB-C](https://www.amazon.de/dp/B0FMJXJL6S) | 5 V supply for the Pi from 12 V | 1 | 11.99 | Amazon |
+| [2×20 pin female header, 2.54 mm, pack of 10](https://www.amazon.de/dp/B0GSVZD1CP) | Carrier board on the Pi header | 1 | 10.97 | Amazon |
+| [ELEGOO double-sided prototype PCB kit, 32 pcs](https://www.amazon.de/dp/B0734XYJPM) | Carrier board | 1 | 14.99 | Amazon |
+| [ALLECIN electrolytic capacitor assortment, 0.1–1000 µF](https://www.amazon.de/dp/B0C1VBXCQM) | Carrier board, 12 V input buffer | 1 | 10.99 | Amazon |
+| [Youmile optical endstop module with 1 m cable, 6 pcs](https://www.amazon.de/dp/B09BTMDW5P) | Z home flag, feeder sensor | 1 | 10.99 | Amazon |
+| [Joycabin WS2812 RGB LED ring, 16 LEDs, pack of 4](https://www.amazon.de/dp/B0H2PW6HJT) | Bottom camera light | 1 | 8.95 | Amazon |
+| [DAOKAI micro limit switch with roller lever, 20 pcs](https://www.amazon.de/dp/B09YYJ23Z4) | *Optional:* only if you don't use sensorless homing or optical sensors | 1 | 6.69 | Amazon |
+| | | | **182.18** | |
 
-## Status
+### Motion (frame and gantry)
 
-Built and tested in WSL (Ubuntu 24.04, g++ 13) and Node 24 only: unit tests, the simulator and the website
-end to end. **Nothing has run on the real Pi, display, sensors, cameras or Octopus yet.** First power-up checklist:
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [STEPPERONLINE NEMA 17, 42 Ncm, 1.5 A, 5 pcs](https://www.amazon.de/dp/B0B38H2ZMR) | X / Y / Z / feeder motors | 1 | 35.00 | Amazon |
+| [QitinDasen GT2 belt 6 mm, 5 m, with pulleys, idlers, tensioners](https://www.amazon.de/dp/B07SHB3NBV) | Seesaw Z belt, feeder gantry | 1 | 15.49 | Amazon |
+| [Cable chain, 1 m](https://www.aliexpress.com/item/1005007435939757.html) | Cables to the head | 1 | 7.30 | AliExpress |
+| [Caianwin M3 T-slot hammer nuts, 20-series, 100 pcs](https://www.amazon.de/dp/B0D3HJJS47) | Mounting parts on the 2020 profiles | 1 | 4.99 | Amazon |
+| | | | **62.78** | |
 
-- [ ] `ls /dev/spidev0.* /dev/i2c-1`, `i2cdetect -y 1` shows 0x48 (ADS1115) and 0x76 (BMP280)
-- [ ] display shows the boot screen; colours wrong → `tft_bgr = 0` in `ui.txt`; mirrored / upside down → `tft_rot = 3`;
-      streaks or wrong pixels → lower `tft_spi_mhz` (default 20; the Pi sits outside the control box, ~45 cm cable)
-- [ ] touch: Settings → Touch → calibrate
-- [ ] `v4l2-ctl --list-devices`, set `cam_bottom_dev` / `cam_top_dev`, check both on Menu → Cameras
-- [ ] Octopus: `OCTO STATUS` on the console / website; TMC drivers answer (`TMC` command), currents set
-- [ ] each axis with `MOTOR <axis> 10`; Z flag, E-stop and stall signals on Menu → Testing → Sensors, then `HOME`
-  (X / Y / gantry home sensorless: DIAG jumpers 0, 1, 6, 7; tune `tmc_sg_x` / `_x2` / `_y` / `_e1`, first start of the two X motors: [octopus-fw/README.md](../octopus-fw/README.md))
-- [ ] E-stop input stops the motors
-"# PickAndPlace" 
+### Head and nozzle
+
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [QUARKZMAN MGN9 rail 200 mm with MGN9H block, 2 pcs](https://www.amazon.de/dp/B0G1M7SF5H) | Seesaw Z rails (picker and paste) | 1 | 24.29 | Amazon |
+| [Watris Veiyi linear rail 100 mm, 9 mm, with block](https://www.amazon.de/dp/B0FDQXXCH6) | Tool carriers | 2 | 20.78 | Amazon |
+| [Aluminium sheet 3 mm, 150 × 250 mm](https://www.amazon.de/dp/B086BM9VDW) | Head plate (82 × 218) | 1 | 14.45 | Amazon |
+| [NEMA 8 PnP rotation head](https://www.aliexpress.com/item/1005005986790652.html) | Picker: hollow shaft, nozzle rotation | 1 | 33.69 | AliExpress |
+| [Juki nozzle](https://www.aliexpress.com/item/4000086185928.html) | Picker nozzle (fits the nozzle changer) | 1 | 7.02 | AliExpress |
+| | | | **100.23** | |
+
+### Vacuum
+
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [TICFOX micro diaphragm vacuum pump, 12 V, 12 L/min](https://www.amazon.de/dp/B0CG5GY1CQ) | Vacuum for the picker | 1 | 14.99 | Amazon |
+| [DEWIN micro vacuum pump, 12 V DC](https://www.amazon.de/dp/B07DVBQJCR) | Vacuum pump | 1 | 8.19 | Amazon |
+| [HAXIHA PU hose 4 / 2.5 mm, 15 m, with 14 connectors](https://www.amazon.de/dp/B0DQ7YXMZR) | Vacuum line from the pump to the nozzle | 1 | 10.99 | Amazon |
+| [Hailege BMP280 pressure sensor (3.3 V), 5 pcs](https://www.amazon.de/dp/B0BN1NXG4D) | Vacuum sensor: is a part on the nozzle? | 1 | 6.89 | Amazon |
+| [KitchenRaku silicone mat, 60 × 40 cm](https://www.amazon.de/dp/B0GQ2XBMS4) | *Later:* vacuum table, not needed yet | 1 | 11.04 | Amazon |
+| | | | **52.10** | |
+
+### Solder paste
+
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [Luer lock syringes 5 ml, without needle, 30 pcs](https://www.amazon.de/dp/B0B4V724PY) | Paste syringe on the head | 1 | 10.99 | Amazon |
+| | | | **10.99** | |
+
+### Wiring
+
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [4-wire silicone cable](https://de.aliexpress.com/item/1005005633799769.html) | Motor cables | 1 | 15.41 | AliExpress |
+| [Henakmsl 12 AWG silicone cable, 5 m (red + black)](https://www.amazon.de/dp/B0B7B2H8B9) | 12 V power to the Octopus | 1 | 12.99 | Amazon |
+| [URCIANOW 2-core wire 0.2 mm², red / black, 15 m](https://www.amazon.de/dp/B0F4QXYJGH) | Fans, sensors, LEDs | 1 | 7.99 | Amazon |
+| [QUARKZMAN ribbon cable, 10-pin, 1.27 mm, 4 m](https://www.amazon.de/dp/B0G15JT5KL) | Signal cables | 1 | 8.19 | Amazon |
+| [QUARKZMAN rainbow ribbon cable, 14-pin, 1.27 mm, 9 m](https://www.amazon.de/dp/B0DTYGHTHQ) | Signal cables | 1 | 14.29 | Amazon |
+| [JST XH 5-pin cable, female–female, 20 cm, 20 pcs](https://www.amazon.de/dp/B0G5XT59S7) | Sensor connections | 1 | 8.99 | Amazon |
+| [JST-XH connector kit, 2–6 pin](https://www.amazon.de/dp/B0BZHR5NCR) | Your own cables | 1 | 7.98 | Amazon |
+| [Gorffy fork cable lug assortment, 0.5–6 mm², 260 pcs](https://www.amazon.de/dp/B0CBS514LL) | Power supply terminals | 1 | 7.63 | Amazon |
+| | | | **83.47** | |
+
+### Fasteners and consumables
+
+| Part | Used for | Qty | Price | Shop |
+|---|---|:-:|--:|---|
+| [M3 heat-set inserts, M3 × 4 × 5 mm, 200 pcs](https://www.amazon.de/dp/B0D17FGQWW) | Every M3 screw into a printed part | 2 | 17.98 | Amazon |
+| [M3 stainless hex socket screw assortment, 1320 pcs](https://www.amazon.de/dp/B0DZWR53CD) | M3 screws, all lengths | 1 | 10.88 | Amazon |
+| [M3 socket head cap screw set with nuts & keys, 645 pcs](https://www.amazon.de/dp/B0GYXBCS39) | M3 screws and nuts | 1 | 3.99 | Amazon |
+| [M2 socket head cap screw set with nuts & keys, 675 pcs](https://www.amazon.de/dp/B0GYX8HPS6) | Motor mounts (NEMA 8) | 1 | 3.99 | Amazon |
+| [Stainless spring assortment, 300 pcs, 23 sizes](https://www.amazon.de/dp/B0G19PLCMG) | Pump vibration mounts | 1 | 7.88 | Amazon |
+| [eSUN PLA 1.75 mm, black, 4 kg](https://www.amazon.de/dp/B0FRFH9HYD) | All printed parts | 1 | 35.99 | Amazon |
+| [Syprin precision mechanics oil, 100 ml](https://www.amazon.de/dp/B0948SPXZ9) | Linear rails and blocks | 1 | 9.99 | Amazon |
+| | | | **90.70** | |
+
+---
+
+## Screws
+
+| Size | Where |
+|---|---|
+| **M2** | Motor mount |
+| **M3** | Every screw into plastic, always into a heat-set insert |
+| **M5** | Joining the aluminium profiles |
+| **Wood screws** (Spax 2 × 10 mm) | Parts onto the MDF base |
+
+The model folders list the exact lengths for each part (for example M3 × 10 into the nozzle changer inserts).
+
+---
+
+## Tools
+
+Not part of the machine, but they make the build a lot easier:
+
+| Tool | Used for | Price | Shop |
+|---|---|--:|---|
+| [Retoo step drill set, 4–12 / 20 / 32 mm](https://www.amazon.de/dp/B0CLDP8CM4) | Holes in the aluminium plate and the CR-10S box | 6.89 | Amazon |
+| [RICHMANN M3 hand tap set, 3 pcs](https://www.amazon.de/dp/B0BHL5Z2FW) | M3 threads in aluminium | 5.32 | Amazon |
+| [KS Tools adjustable tap wrench, M1–M12](https://www.amazon.de/dp/B0099LPKW4) | Holds the taps | 5.89 | Amazon |
+| [Preciva 2-in-1 crimping tool, Dupont & flat connectors](https://www.amazon.de/dp/B0D8KCHZK5) | JST / Dupont crimps | 16.14 | Amazon |
+| [Mini 3-in-1 wire stripper / side cutter, 20–10 AWG](https://www.amazon.de/dp/B0FDQD4YRX) | Stripping and cutting wire | 6.79 | Amazon |
+| | | **41.03** | |
+
+You'll also need a soldering iron (for the carrier board and for pressing in the heat-set inserts), a 3D
+printer and a drill.
