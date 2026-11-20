@@ -1,4 +1,6 @@
 #include "commands.h"
+#include <cstring>
+#include <strings.h>
 #include <motion.h>
 #include "../feeder_scan.h"
 #include "../job/runner.h"
@@ -20,7 +22,7 @@ static const Command TABLE[] PROGMEM = {
     {"RM", cmdRm}, {"MV", cmdMv}, {"CAT", cmdCat}, {"UPLOAD", cmdUpload},
     {"CHECK", cmdCheck}, {"RUN", cmdRun}, {"PAUSE", cmdPause}, {"RESUME", cmdResume},
     {"CONTINUE", cmdContinue}, {"SKIP", cmdSkip}, {"STOP", cmdStop}, {"JOB", cmdJob},
-    {"HOME", cmdHome}, {"MOVE", cmdMove}, {"JOG", cmdJog}, {"E1", cmdE1}, {"E0", cmdE0}, {"ROTATE", cmdRotate}, {"PASTE", cmdPaste},
+    {"HOME", cmdHome}, {"MOVE", cmdMove}, {"JOG", cmdJog}, {"JOGV", cmdJogV}, {"E1", cmdE1}, {"E0", cmdE0}, {"ROTATE", cmdRotate}, {"PASTE", cmdPaste},
     {"MOTOR", cmdMotor}, {"SETPOS", cmdSetPos}, {"POS", cmdPos}, {"MOTORS", cmdMotors},
     {"HALT", cmdHalt}, {"ESTOP", cmdEstop}, {"CLEAR", cmdClear}, {"SENSORS", cmdSensors},
     {"PUMP", cmdPump}, {"VALVE", cmdValve}, {"OUTPUTS", cmdOutputs},
@@ -28,7 +30,7 @@ static const Command TABLE[] PROGMEM = {
     {"FEEDERS", cmdFeeders}, {"FEEDER", cmdFeeder}, {"POCKET", cmdPocket}, {"SCAN", cmdScan}, {"NFC", cmdNfc},
     {"LIGHT", cmdLight}, {"TMC", cmdTmc}, {"OCTO", cmdOcto},
     {"CAM", cmdCam}, {"VACUUM", cmdVacuum}, {"JOY", cmdJoy}, {"CAL", cmdCal}, {"SCREEN", cmdScreen},
-    {"NOZZLES", cmdNozzles}, {"SETTINGS", cmdSettings}, {"OCTOSD", cmdOctoSd}, {"LOADCELL", cmdLoadcell}, {"SGTEST", cmdSgTest}, {"NOZZLE", cmdNozzle},
+    {"NOZZLES", cmdNozzles}, {"SETTINGS", cmdSettings}, {"OCTOSD", cmdOctoSd}, {"LOADCELL", cmdLoadcell}, {"SGTEST", cmdSgTest}, {"FINDLEN", cmdFindLen}, {"NOZZLE", cmdNozzle},
 };
 static const uint8_t COUNT = sizeof(TABLE) / sizeof(TABLE[0]);
 
@@ -77,6 +79,18 @@ namespace commands
             }
         }
         out::error2(port.io, PSTR("unknown command"), args[0]);
+    }
+
+    void urgentLine(const std::string &line)
+    {
+        auto is = [&](const char *w) {
+            const size_t n = strlen(w);
+            return line.size() >= n && strncasecmp(line.c_str(), w, n) == 0 && (line.size() == n || line[n] == ' ');
+        };
+        if (is("ESTOP"))
+            octo.urgent("ESTOP");
+        else if (is("HALT") && !runner.active() && !feederScan.active()) // as cmdHalt: not during a job
+            octo.urgent("HALT");
     }
 
     bool refuseIfBusy(Port &port)

@@ -33,6 +33,11 @@ namespace commands
     // Machine busy with a job or auto detect: prints the error and returns true.
     bool refuseIfBusy(Port &port);
 
+    // Called for every incoming line before it is queued: HALT / ESTOP go to the Octopus at
+    // once, so they also stop a HOME / SGTEST that blocks the command loop. The line is still
+    // run normally afterwards.
+    void urgentLine(const std::string &line);
+
     // The command line being executed, as it came in (for passing it on to the Octopus)
     const std::string &currentLine();
     // Resolve a path argument against the port's working folder into `out`
@@ -91,6 +96,7 @@ void cmdJob(Port &, Args &);
 void cmdHome(Port &, Args &);
 void cmdMove(Port &, Args &);
 void cmdJog(Port &, Args &);
+void cmdJogV(Port &, Args &);
 void cmdE1(Port &, Args &);
 void cmdE0(Port &, Args &);
 void cmdMotor(Port &, Args &);
@@ -124,6 +130,7 @@ void cmdNozzles(Port &, Args &);
 void cmdSettings(Port &, Args &); // cmd_settings.cpp: the settings catalog
 void cmdLoadcell(Port &, Args &); // cmd_machine.cpp: load cell on the Octopus
 void cmdSgTest(Port &, Args &);   // cmd_machine.cpp: StallGuard measurement (sensorless homing)
+void cmdFindLen(Port &, Args &);  // cmd_machine.cpp: travel length of X / Y / the gantry
 void cmdOctoSd(Port &, Args &);   // cmd_octosd.cpp: the Octopus microSD card
 void cmdNozzle(Port &, Args &);
 void cmdFeeders(Port &, Args &);

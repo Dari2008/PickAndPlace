@@ -61,6 +61,8 @@ static const Row ROWS[] = {
     {"joy_invert_x", T_BOOL, 0, 1, 0, OFS(joyInvert[0]), nullptr},
     {"joy_invert_y", T_BOOL, 0, 1, 0, OFS(joyInvert[1]), nullptr},
     {"joy_swap", T_BOOL, 0, 1, 0, OFS(joySwap), nullptr},
+    {"joy_jog_invert_x", T_BOOL, 0, 1, 0, OFS(joyJogInvert[0]), nullptr},
+    {"joy_jog_invert_y", T_BOOL, 0, 1, 0, OFS(joyJogInvert[1]), nullptr},
     {"joy_jog_speed", T_FLOAT, 0.1f, 500, 50, OFS(joyJogSpeed), nullptr},
     {"joy_hold_ms", T_U16, 200, 5000, 800, OFS(joyHoldMs), nullptr},
     // vacuum

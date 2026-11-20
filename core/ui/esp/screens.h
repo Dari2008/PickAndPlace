@@ -74,9 +74,12 @@ public:
     void draw(Gfx &g) override;
     bool back() override { return done_; }
     uint8_t animRects(Rect *r) const override;
+    void tick() override;
 
 private:
-    bool done_ = false, failed_ = false, e1Only_ = false;
+    void close(); // homed: back to the screen below, "Homed", then `then`
+    bool done_ = false, failed_ = false, e1Only_ = false, closePending_ = false;
+    std::string error_; // what the board said when homing failed
     uint32_t started_ = 0;
     std::function<void()> then_;
 };
@@ -336,6 +339,7 @@ public:
 
 private:
     std::string running_;
+    bool cancelled_ = false;
     ListView list_;
 };
 
@@ -350,12 +354,44 @@ public:
     void drag(int dy) override { list_.dragBy(dy); }
 
 private:
+    // While measuring: the live values (Machine::sgLive) are repainted every 100 ms
+    uint8_t animRects(Rect *r) const override
+    {
+        if (!busy_ || !measuring_)
+            return 0;
+        r[0] = {16, 62, 288, 46};
+        return 1;
+    }
+    uint16_t animMs() const override { return 100; }
     std::string key(const char *what, int which = 0) const; // "tmc_sg_" -> tmc_sg_x / _x2 / _y / _e1
     void save(const std::string &key, float value);
     int axis_ = 0; // x, y, e1
     bool busy_ = false;
+    bool cancelled_ = false;
+    std::string busyWhat_; // "Measuring X" / "Homing X" while busy_
+    bool measuring_ = false;
+    uint32_t liveSeq_ = 0;
+    int liveMin_[2] = {-1, -1}, liveMax_[2] = {-1, -1};
     std::string result_;
     int suggest_[2] = {-1, -1};
+    ListView list_;
+};
+
+// Testing -> Find length: from home, run X / Y / the gantry to the far end until it stalls (FINDLEN),
+// show the length and save it as travel_*. Needs the axis homed first (offers a Home button).
+class FindLengthScreen : public Screen
+{
+public:
+    void enter() override { list_.reset(); }
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    void drag(int dy) override { list_.dragBy(dy); }
+
+private:
+    int axis_ = 0; // x, y, e1
+    bool busy_ = false, cancelled_ = false;
+    std::string busyWhat_, result_;
+    int suggest_ = -1; // travel to save, -1 = nothing measured
     ListView list_;
 };
 
@@ -583,6 +619,7 @@ extern SensorsScreen sensorsScreen;
 extern MotorTestScreen motorTestScreen;
 extern HomeAxesScreen homeAxesScreen;
 extern SgCalScreen sgCalScreen;
+extern FindLengthScreen findLengthScreen;
 extern TouchCalScreen touchCalScreen;
 extern TouchSettingsScreen touchSettingsScreen;
 extern TouchTestScreen touchTestScreen;

@@ -1,11 +1,22 @@
 @echo off
 rem Upload the Pi code (this pi\ folder) to the Raspberry Pi with rsync in WSL -> ~/pap on the Pi.
 rem   upload.bat          upload only
-rem   upload.bat build    upload, build pap-core + pap-web on the Pi, restart the services
+rem   upload.bat build    upload, build pap-core + pap-web on the Pi (services keep running the old build)
+rem   upload.bat build -auto-restart   ... and restart the pap-core + pap-web services afterwards
 rem Login by SSH key: the first run creates a WSL key and asks for the Pi password once (ssh-copy-id).
 setlocal
 set TARGET=pnp@192.168.178.66
 set DEST=pap/
+
+set BUILD=
+set RESTART=
+:args
+if "%~1"=="" goto argsdone
+if /i "%~1"=="build" ( set BUILD=1 & shift & goto args )
+if /i "%~1"=="-auto-restart" ( set RESTART=1 & shift & goto args )
+echo Unknown argument "%~1" - use: upload.bat [build] [-auto-restart]
+exit /b 1
+:argsdone
 
 rem SSH key login set up? (BatchMode = never ask for a password)
 wsl -e ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new %TARGET% true >nul 2>&1
@@ -36,9 +47,17 @@ if exist "%FW%" (
     echo No Octopus firmware built yet - skipped
 )
 
-if /i "%~1"=="build" (
+if defined BUILD (
     echo Building on the Pi ...
-    wsl -e ssh -t %TARGET% "cd ~/pap/core && make -j4 && cd ~/pap/web && (test -d node_modules || npm install) && npm run build && (systemctl list-unit-files pap-core.service >/dev/null && sudo systemctl restart pap-core pap-web || echo 'services not installed yet')"
+    wsl -e ssh -t %TARGET% "cd ~/pap/core && make -j4 && cd ~/pap/web && (test -d node_modules || npm install) && npm run build"
     if errorlevel 1 ( echo Build failed. & exit /b 1 )
+)
+if defined RESTART (
+    echo Restarting the services ...
+    wsl -e ssh -t %TARGET% "systemctl list-unit-files pap-core.service >/dev/null && sudo systemctl restart pap-core pap-web || echo 'services not installed yet'"
+    if errorlevel 1 ( echo Restart failed. & exit /b 1 )
+) else if defined BUILD (
+    echo Services not restarted - they still run the old build. Restart: upload.bat -auto-restart
+    echo   or by hand on the Pi: sudo systemctl restart pap-core pap-web
 )
 echo Done.

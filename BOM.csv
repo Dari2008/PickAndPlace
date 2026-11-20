@@ -12,7 +12,7 @@ Electronics and control,"ALLECIN electrolytic capacitor assortment, 0.1–1000 �
 Electronics and control,"Youmile optical endstop module with 1 m cable, 6 pcs","Z home flag, feeder sensor",https://www.amazon.de/dp/B09BTMDW5P,Amazon,10.99,1,10.99,
 Electronics and control,"Joycabin WS2812 RGB LED ring, 16 LEDs, pack of 4",Bottom camera light,https://www.amazon.de/dp/B0H2PW6HJT,Amazon,8.95,1,8.95,
 Electronics and control,"DAOKAI micro limit switch with roller lever, 20 pcs",Optional: only if you don't use sensorless homing or optical sensors,https://www.amazon.de/dp/B09YYJ23Z4,Amazon,6.69,1,6.69,Optional
-Motion (frame and gantry),Creality CR-10S,"Base machine: frame, profiles, X-carriage, control box housing",,Kleinanzeigen (only in Germany),45.00,1,45.00,
+Motion (frame and gantry),Creality CR-10S,"Base machine: frame, profiles, Y-carriage, control box housing",,Kleinanzeigen (only in Germany),45.00,1,45.00,
 Motion (frame and gantry),"STEPPERONLINE NEMA 17, 42 Ncm, 1.5 A, 5 pcs",X / Y / Z / feeder motors,https://www.amazon.de/dp/B0B38H2ZMR,Amazon,35.00,1,35.00,
 Motion (frame and gantry),"QitinDasen GT2 belt 6 mm, 5 m, with pulleys, idlers, tensioners","Seesaw Z belt, feeder gantry",https://www.amazon.de/dp/B07SHB3NBV,Amazon,15.49,1,15.49,
 Motion (frame and gantry),"Cable chain, 1 m",Cables to the head,https://www.aliexpress.com/item/1005007435939757.html,AliExpress,7.30,1,7.30,
@@ -32,7 +32,6 @@ Wiring,4-wire silicone cable,Motor cables,https://de.aliexpress.com/item/1005005
 Wiring,"Henakmsl 12 AWG silicone cable, 5 m (red + black)",12 V power to the Octopus,https://www.amazon.de/dp/B0B7B2H8B9,Amazon,12.99,1,12.99,
 Wiring,"URCIANOW 2-core wire 0.2 mm², red / black, 15 m","Fans, sensors, LEDs",https://www.amazon.de/dp/B0F4QXYJGH,Amazon,7.99,1,7.99,
 Wiring,"QUARKZMAN ribbon cable, 10-pin, 1.27 mm, 4 m",Signal cables,https://www.amazon.de/dp/B0G15JT5KL,Amazon,8.19,1,8.19,
-Wiring,"QUARKZMAN rainbow ribbon cable, 14-pin, 1.27 mm, 9 m",Signal cables,https://www.amazon.de/dp/B0DTYGHTHQ,Amazon,14.29,1,14.29,
 Wiring,"JST XH 5-pin cable, female–female, 20 cm, 20 pcs",Sensor connections,https://www.amazon.de/dp/B0G5XT59S7,Amazon,8.99,1,8.99,
 Wiring,"JST-XH connector kit, 2–6 pin",Your own cables,https://www.amazon.de/dp/B0BZHR5NCR,Amazon,7.98,1,7.98,
 Wiring,"Gorffy fork cable lug assortment, 0.5–6 mm², 260 pcs",Power supply terminals,https://www.amazon.de/dp/B0CBS514LL,Amazon,7.63,1,7.63,
@@ -48,6 +47,6 @@ Tools,"RICHMANN M3 hand tap set, 3 pcs",M3 threads in aluminium,https://www.amaz
 Tools,"KS Tools adjustable tap wrench, M1–M12",Holds the taps,https://www.amazon.de/dp/B0099LPKW4,Amazon,5.89,1,5.89,
 Tools,"Preciva 2-in-1 crimping tool, Dupont & flat connectors",JST / Dupont crimps,https://www.amazon.de/dp/B0D8KCHZK5,Amazon,16.14,1,16.14,
 Tools,"Mini 3-in-1 wire stripper / side cutter, 20–10 AWG",Stripping and cutting wire,https://www.amazon.de/dp/B0FDQD4YRX,Amazon,6.79,1,6.79,
-,Subtotal (parts and tools),,,,,,668.48,
+,Subtotal (parts and tools),,,,,,654.19,
 ,Shipping (about; Amazon shipped free),,,,,,10.00,
-,TOTAL,,,,,,678.48,Raspberry Pi not included
+,TOTAL,,,,,,664.19,Raspberry Pi not included

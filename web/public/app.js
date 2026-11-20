@@ -75,7 +75,19 @@ function onMessage(m) {
   }
 }
 
+// Calibrate -> Homing (sensorless): load values while Measure runs
+let sgLive = null;
+function showSgLive(f) {
+  const el = document.getElementById('sgLive');
+  if (!el || !sgLive) return;
+  const v = [+f.v, +f.v2];
+  v.forEach((x, k) => { if (x >= 0) { sgLive.min[k] = Math.min(sgLive.min[k], x); sgLive.max[k] = Math.max(sgLive.max[k], x); } });
+  const side = (k, name) => `${name} <b>${v[k]}</b> <span class="dim">(min ${sgLive.min[k]} · max ${sgLive.max[k]})</span>`;
+  el.innerHTML = side(0, f.axis.toUpperCase()) + (v[1] >= 0 ? ' &nbsp; ' + side(1, 'X2') : '') + ` &nbsp; <span class="dim">${f.mm} mm</span>`;
+}
+
 function onEvent(type, f) {
+  if (type === 'sg') return showSgLive(f); // SGTEST live values: no console spam, no full refresh
   if (type !== 'status' && type !== 'job') logConsole('!' + type + ' ' + Object.entries(f).map(([k, v]) => `${k}=${q(v)}`).join(' '), 'ev');
   if (type === 'status') { state.status = f; setLink(true); }
   else if (type === 'job') { state.job = f; if (f.state !== 'message') state.message = ''; }
@@ -859,12 +871,12 @@ function renderCalibrate() {
       stepRow('Axis', 'The axis to calibrate. Jog it into free travel, away from the ends.',
         `<select id="sgAxis"><option value="x">X (both motors)</option><option value="y">Y</option><option value="e1">Gantry (E1)</option></select>
          ${btn('sgJogM', '−10 mm')} ${btn('sgJogP', '+10 mm')}`) +
-      stepRow('Measure', 'Runs this far away from its home end and back, at the homing speed and current (home_cur), reading the load all along.',
-        `<input type="number" id="sgMm" value="50" step="10" style="width:70px"> <span class="dim">mm</span> ${btn('sgMeasure', 'Measure', 'primary')}`) +
-      stepRow('Save the threshold', '35 % of the lowest value while running free: it won\'t stop in free travel, but stops at the end.', btn('sgUse', 'Use the suggestion')) +
+      stepRow('Measure', 'Runs this far towards its home end, like homing, and pushes into the end without stopping (start closer than that). At the homing speed and current (home_cur): load while running free (max) and stalled (min).',
+        `<input type="number" id="sgMm" value="50" step="10" style="width:70px"> <span class="dim">mm</span> ${btn('sgMeasure', 'Measure', 'primary')}<div id="sgLive" style="margin-top:6px"></div>`) +
+      stepRow('Save the threshold', 'Centre between min (stalled) and max (free): it won\'t stop in free travel, but stops at the end.', btn('sgUse', 'Use the suggestion')) +
       stepRow('Test', 'Home this axis with the saved values. Stops too early: lower tmc_sg. Rams the end: raise it, or lower home_cur.', btn('sgHome', 'Home this axis', 'primary')) +
       fields(['home_cur', 'home_speed', 'home_blank', ['tmc_sg_x', 'X threshold'], ['tmc_sg_x2', 'X2 threshold'], ['tmc_sg_y', 'Y threshold'],
-        ['tmc_sg_e1', 'Gantry threshold'], ['tmc_cur_x', 'X current'], ['tmc_cur_y', 'Y current'], ['tmc_cur_e1', 'Gantry current'], 'home_xy', 'e1_home'])),
+        ['tmc_sg_e1', 'Gantry threshold'], ['tmc_cur_x', 'X current'], ['tmc_cur_y', 'Y current'], ['tmc_cur_e1', 'Gantry current'], 'home_xy', 'home_dir_x', 'home_dir_y', 'e1_home', 'e1_home_dir'])),
   ];
 
   $('#view').innerHTML = `<div class="calgrid">
@@ -1087,12 +1099,16 @@ function renderCalibrate() {
     sgJogP: () => run(`JOG ${$('#sgAxis').value}=10 speed=20`),
     sgMeasure: async () => {
       const ax = $('#sgAxis').value, mm = +$('#sgMm').value || 50;
-      if (!(await confirmBox(`${ax.toUpperCase()} runs ${mm} mm away from its home end and back. Enough room?`, 'Start'))) return null;
+      if (!(await confirmBox(`${ax.toUpperCase()} runs ${mm} mm towards its home end, like homing, and pushes into the end without stopping. Start it less than ${mm} mm from the end. Go?`, 'Start'))) return null;
+      sgLive = { min: [Infinity, Infinity], max: [-1, -1] };
+      const live = document.getElementById('sgLive');
+      if (live) live.textContent = 'waiting for values ...';
       const r = await cmd(`SGTEST ${ax} ${mm}`);
       if (!r.ok) throw new Error(r.error);
       const recs = r.records.filter((x) => x.type === 'sgtest').map((x) => x.f);
       mem.sg = { ax, recs };
-      return recs.map((f) => `${f.axis}: min ${f.min} · avg ${f.avg} · max ${f.max} → suggested tmc_sg ${f.suggest}`).join('   |   ');
+      return recs.map((f) => `${f.axis}: min ${f.min} (end) · avg ${f.avg} · max ${f.max} (free) → suggested tmc_sg ${f.suggest}` +
+        (+f.stall ? '' : ' - but min is not clearly below max: did it reach the end?')).join('   |   ');
     },
     sgUse: async () => {
       const m = mem.sg;

@@ -2,6 +2,8 @@
 #include "../hw/buzzer.h"
 #include "../link/link.h"
 
+#include <cstdlib>
+
 Machine machine;
 
 namespace
@@ -85,6 +87,14 @@ void Machine::handle(const Record &e)
             status_.connected = true;
             if (status_.state != "scanning" && scan_.active)
                 scan_.active = false;
+        }
+        else if (e.type == "sg")
+        {
+            sg_.axis = e.str("axis");
+            sg_.v = (int)e.integer("v", -1);
+            sg_.v2 = (int)e.integer("v2", -1);
+            sg_.mm = (float)atof(e.str("mm").c_str());
+            sg_.seq++;
         }
         else if (e.type == "job")
         {
@@ -284,6 +294,12 @@ ScanInfo Machine::scan()
 {
     Lock lock(mutex_);
     return scan_;
+}
+
+SgLive Machine::sgLive()
+{
+    Lock lock(mutex_);
+    return sg_;
 }
 
 std::string Machine::lastAlarm()

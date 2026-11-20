@@ -211,12 +211,14 @@ namespace
 
         b.group = "Homing";
         b.oc("home_xy", "X / Y homing", "", 2, 0, 2, 0, "Sensorless (DIAG jumpers 0 / 1 / 7, tmc_sg_x / _x2 / _y), or switches on DIAG0 / DIAG1 / DIAG7", "none|switch|sensorless");
+        b.oc("home_dir_x", "X home side", "", -1, -1, 1, 0, "-1 = at X min (becomes 0), +1 = at X max (becomes travel_x)");
+        b.oc("home_dir_y", "Y home side", "", -1, -1, 1, 0, "-1 = at Y min (becomes 0), +1 = at Y max (becomes travel_y)");
         b.oc("home_speed", "Homing speed", "mm/s", 40, 0.1f, 500, 1, "First, fast approach");
         b.oc("home_slow", "Homing slow speed", "mm/s", 3, 0.1f, 100, 1, "Second, precise approach");
         b.oc("home_pulloff", "Pull-off", "mm", 3, 0, 50, 1, "Back off the switch after homing");
         b.oc("home_cur", "X homing current", "%", 60, 10, 100, 0, "Of the X motor currents, while seeking a stall");
         b.oc("home_blank", "Ignore stalls at the start", "mm", 2, 0, 50, 1, "Sensorless homing: while the motors accelerate");
-        b.oc("home_skew_max", "Max X skew", "mm", 2, 0.1f, 50, 1, "Homing fails if one X side runs on this far alone");
+        b.oc("home_skew_max", "Max X skew", "mm", 0, 0, 1000, 1, "0 = off: a stalled X side waits until the other stalls too. Else homing fails if one side runs on this far alone");
         b.oc("x2_offset", "X2 trim", "mm", 0, -3, 3, 2, "Second X motor moves this far alone after homing, to square the gantry");
         b.oc("z_home", "Seesaw homing", "", 1, 0, 1, 0, "Half flag on DIAG2, or level by hand", "none|flag");
         b.oc("z_travel", "Seesaw travel", "mm", 40, 1, 500, 1, "Search range for the flag");
@@ -274,6 +276,8 @@ namespace
         b.pi("joy_invert_x", "Reverse X", "", "");
         b.pi("joy_invert_y", "Reverse Y", "", "");
         b.pi("joy_swap", "Swap X and Y", "", "");
+        b.pi("joy_jog_invert_x", "Reverse X when jogging", "", "Only the axis movement, not the menus");
+        b.pi("joy_jog_invert_y", "Reverse Y when jogging", "", "Only the axis movement, not the menus");
         for (const char *a : {"x", "y"})
             for (const char *p : {"min", "center", "max"})
                 b.pi((std::string("joy_") + a + "_" + p).c_str(), (std::string("Raw ") + (char)toupper(a[0]) + " " + p).c_str(), "",

@@ -44,6 +44,8 @@ void cmdHome(Port &port, Args &)
 
 void cmdMove(Port &port, Args &) { forwardMoving(port); }
 void cmdJog(Port &port, Args &) { forwardMoving(port); }
+// JOGV x= y= z= e1= (mm/s): velocity jog of the joystick, stops on JOGV 0 or 300 ms without a JOGV
+void cmdJogV(Port &port, Args &) { forwardMoving(port); }
 void cmdE1(Port &port, Args &) { forwardMoving(port); }
 void cmdE0(Port &port, Args &) { forwardMoving(port); }
 void cmdMotor(Port &port, Args &) { forwardMoving(port); }
@@ -134,6 +136,16 @@ void cmdSgTest(Port &port, Args &)
     if (commands::refuseIfBusy(port))
         return;
     forward(port, commands::currentLine(), 120000);
+    delay(60);
+    motion.syncTargets();
+}
+
+// FINDLEN <x|y|e1>: home -> far end until it stalls, answers the length (octopus-fw README)
+void cmdFindLen(Port &port, Args &)
+{
+    if (commands::refuseIfBusy(port))
+        return;
+    forward(port, commands::currentLine(), 300000);
     delay(60);
     motion.syncTargets();
 }

@@ -99,7 +99,7 @@ int Octopus::defaultTimeout(const std::string &line)
     std::string w = line.substr(0, line.find(' '));
     for (char &c : w)
         c = (char)toupper((unsigned char)c);
-    if (w == "HOME")
+    if (w == "HOME" || w == "FINDLEN")
         return 300000;
     if (w == "WAIT" || w == "PROBE" || w == "HALT")
         return 600000;
@@ -201,6 +201,29 @@ uint64_t Octopus::send(const std::string &line, int timeoutMs)
     }
     cv_.notify_all();
     return r->id;
+}
+
+void Octopus::urgent(const std::string &line)
+{
+    std::lock_guard<std::mutex> l(m_);
+    if (!open_)
+        return;
+    auto r = std::make_shared<Request>();
+    r->id = nextId_++; // not in byId_: nobody waits for it
+    r->line = line;
+    r->timeoutMs = 5000;
+    if (queue_.empty() || !queue_.front()->sent)
+    {
+        queue_.push_front(r); // nothing on the wire: just goes first
+        pump();
+        return;
+    }
+    // Behind the request on the wire, ahead of everything not sent yet, so the answers
+    // still come back in queue order.
+    r->sent = true;
+    r->sentMs = millis();
+    queue_.insert(queue_.begin() + 1, r);
+    tx_->write(line);
 }
 
 bool Octopus::poll(uint64_t ticket, OctoReply &out)

@@ -74,6 +74,15 @@ struct ScanFound
     std::string name;
 };
 
+// SGTEST live load values ("!sg" events while Calibration -> Sensorless homing measures)
+struct SgLive
+{
+    std::string axis;
+    int v = -1, v2 = -1; // X2: v2, other axes -1
+    float mm = 0;        // commanded travel so far
+    uint32_t seq = 0;    // counts events
+};
+
 struct ScanInfo
 {
     std::vector<ScanFound> found;
@@ -98,6 +107,7 @@ public:
     ScanInfo scan();
     std::string setting(const char *key, const char *def = "");
     std::string lastAlarm();
+    SgLive sgLive();
 
     void refreshFeeders();
     void refreshSettings();
@@ -123,6 +133,7 @@ private:
     std::vector<CatalogEntry> catalog_;
     ScanInfo scan_;
     std::string alarm_;
+    SgLive sg_;
     volatile uint32_t revision_ = 0;
     volatile uint32_t statusRevision_ = 0;
     bool wasConnected_ = false;

@@ -14,33 +14,51 @@ static const char *CAM_NAME[] = {"bottom", "top"};
 
 // ---------------------------------------------------------------- joystick jog
 
+// Velocity jog: while the stick is out, "JOGV x= y=" (mm/s) every 50 ms; the Octopus keeps moving at
+// that speed and blends it into one smooth motion. Released: one "JOGV ... 0" stops it (and the board
+// stops by itself 300 ms after the last JOGV). Speed grows with the deflection (squared: fine near the
+// centre, joy_jog_speed at full deflection).
 void stickJog(int axis)
 {
     static uint32_t last = 0;
+    static bool moving = false;
+    static int movingAxis = 0;
     const JoyState j = input.stick();
     const bool xy = axis < 0;
-    if (fabsf(j.y) < 0.01f && (!xy || fabsf(j.x) < 0.01f))
+    const bool out = fabsf(j.y) >= 0.01f || (xy && fabsf(j.x) >= 0.01f);
+    if (!out)
+    {
+        if (moving)
+        {
+            moving = false;
+            ui.send(movingAxis < 0 ? "JOGV x=0 y=0" : movingAxis == 2 ? "JOGV z=0" : "JOGV e1=0", nullptr, false, false);
+        }
         return;
-    // One short move every ~100 ms, never more than one waiting: stops at once on release
-    if (millis() - last < 100 || ctrl.queued() > 1)
+    }
+    if (millis() - last < 50 || ctrl.queued() > 1)
         return;
     last = millis();
     const float vmax = std::max(0.1f, (float)atof(machine.setting("joy_jog_speed", "50").c_str()));
-    auto curve = [](float v) { return v * fabsf(v); }; // fine control near the centre
-    const float dt = 0.12f;
+    auto curve = [](float v) { return v * fabsf(v); };
     char cmd[80];
+    if (axis == 4)
+    {
+        // feeder motor: still short steps (E0 has no position limits to blend into)
+        snprintf(cmd, sizeof(cmd), "E0 %.2f", curve(j.y) * 20);
+        ui.send(cmd, nullptr, false, false);
+        return;
+    }
     if (xy)
     {
-        const float vx = curve(j.x) * vmax, vy = curve(j.y) * vmax;
-        snprintf(cmd, sizeof(cmd), "JOG x=%.3f y=%.3f speed=%.1f", vx * dt, vy * dt, std::max(0.5f, hypotf(vx, vy)));
+        // joy_jog_invert_x / _y: only the axis movement, the stick itself (menus) stays as it is
+        const float sx = machine.setting("joy_jog_invert_x", "0") == "1" ? -1.0f : 1.0f;
+        const float sy = machine.setting("joy_jog_invert_y", "0") == "1" ? -1.0f : 1.0f;
+        snprintf(cmd, sizeof(cmd), "JOGV x=%.2f y=%.2f", sx * curve(j.x) * vmax, sy * curve(j.y) * vmax);
     }
-    else if (axis == 4)
-        snprintf(cmd, sizeof(cmd), "E0 %.2f", curve(j.y) * 20);
     else
-    {
-        const float v = curve(j.y) * vmax * (axis == 2 ? 0.3f : 1);
-        snprintf(cmd, sizeof(cmd), "JOG %s=%.3f speed=%.1f", axis == 2 ? "z" : "e1", v * dt, std::max(0.5f, fabsf(v)));
-    }
+        snprintf(cmd, sizeof(cmd), "JOGV %s=%.2f", axis == 2 ? "z" : "e1", curve(j.y) * vmax * (axis == 2 ? 0.3f : 1));
+    moving = true;
+    movingAxis = xy ? -1 : axis;
     ui.send(cmd, nullptr, false, false);
 }
 

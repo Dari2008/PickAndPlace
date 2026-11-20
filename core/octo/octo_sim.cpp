@@ -175,6 +175,8 @@ void SimTransport::handle(const std::string &line)
     if (alarm_ && (cmd("MOVE") || cmd("JOG") || cmd("HOME") || cmd("E1") || cmd("E0") || cmd("ROTATE") ||
                    cmd("PASTE") || cmd("MOTOR") || cmd("PROBE")))
         return error("alarm: (CLEAR first)");
+    if (cmd("JOGV"))
+        return ok(); // velocity jog: the simulation does not move for it
     if (cmd("MOVE") || cmd("JOG"))
     {
         const bool rel = cmd("JOG");
@@ -221,14 +223,23 @@ void SimTransport::handle(const std::string &line)
             return error("usage: SGTEST <x|y|e1> [mm] [speed=] [cur=]");
         auto rec = [&](const char *name, int mn) {
             char l[160];
-            snprintf(l, sizeof(l), "sgtest axis=%s n=120 min=%d avg=%d max=%d suggest=%d cur=60 speed=40.0", name, mn, mn + 60,
-                     mn + 130, (int)lroundf(mn * 0.35f));
+            snprintf(l, sizeof(l), "sgtest axis=%s n=120 min=4 avg=%d max=%d stall=1 suggest=%d cur=60 speed=40.0", name, mn + 60,
+                     mn + 130, (int)lroundf((4 + mn + 130) / 4.0f));
             out(l);
         };
         const bool isX = ax == "x" || ax == "X";
         rec(isX ? "x" : ax == "y" || ax == "Y" ? "y" : "e1", 180);
         if (isX)
             rec("x2", 170);
+        return ok();
+    }
+    if (cmd("FINDLEN"))
+    {
+        // Made-up length of a 352 mm axis with 3 mm pull-off
+        const std::string ax = w.size() > 1 ? w[1] : "";
+        if (ax.empty())
+            return error("usage: FINDLEN <x|y|e1>");
+        out("findlen axis=" + ax + " mm=352.4 suggest=349");
         return ok();
     }
     if (cmd("HOME"))

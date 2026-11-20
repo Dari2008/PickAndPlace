@@ -341,7 +341,8 @@ void MenuScreen::action(uint16_t id)
 
 void HomingScreen::start(bool e1Only, std::function<void()> then)
 {
-    done_ = failed_ = false;
+    done_ = failed_ = closePending_ = false;
+    error_.clear();
     e1Only_ = e1Only;
     then_ = then;
     started_ = millis();
@@ -349,15 +350,30 @@ void HomingScreen::start(bool e1Only, std::function<void()> then)
     ui.send(e1Only ? "HOME E1" : "HOME", [this](const Reply &r) {
         done_ = true;
         failed_ = !r.ok;
+        error_ = r.error;
         if (r.ok)
         {
+            closePending_ = true;
             if (ui.top() == this)
-                ui.pop();
-            ui.toast("Homed");
-            if (then_)
-                then_();
+                close();
+            // else another screen (e.g. offline) covers it: tick() closes it once it is on top again
         }
     }, false);
+}
+
+void HomingScreen::close()
+{
+    closePending_ = false;
+    ui.pop();
+    ui.toast("Homed", th::OK);
+    if (then_)
+        then_();
+}
+
+void HomingScreen::tick()
+{
+    if (closePending_ && ui.top() == this)
+        close();
 }
 
 uint8_t HomingScreen::animRects(Rect *r) const
@@ -375,20 +391,56 @@ void HomingScreen::draw(Gfx &g)
     g.titleBar("Home all", done_);
     static const char *STEPS[] = {"X + Y", "Z", "E1 carriage"};
     const int first = e1Only_ ? 2 : 0;
+    // The board homes Z, then X + Y, then E1: from its message, which step failed
+    int failRow = 0;
+    if (error_.find("seesaw") != std::string::npos || error_.find("Z ") != std::string::npos)
+        failRow = 1;
+    else if (error_.find("gantry") != std::string::npos || error_.find("e1_home") != std::string::npos)
+        failRow = 2;
+    static const int ORDER[3] = {1, 0, 2}; // position of each row in the board's order
     for (int i = first; i < 3; i++)
     {
         const int y = 44 + (i - first) * 44;
         g.card(16, y, 288, 36);
-        if (failed_)
+        const bool bad = failed_ && i == failRow, ok = failed_ && ORDER[i] < ORDER[failRow];
+        if (bad)
             g.icon(Icon::Warn, 29, y + 11, th::BAD);
-        else
+        else if (ok)
+            g.icon(Icon::Check, 29, y + 11, th::OK);
+        else if (!failed_)
             spinner(g, 36, y + 18, 8, th::ACCENT);
-        g.text(STEPS[i], 54, y + 18, Font::Title, th::TEXT);
-        g.text(failed_ ? "failed" : "homing ...", 304 - 12, y + 18, Font::Body, failed_ ? th::BAD : th::ACCENT, Align::Right);
+        g.text(STEPS[i], 54, y + 18, Font::Title, failed_ && !bad && !ok ? th::DIM : th::TEXT);
+        const char *state = !failed_ ? "homing ..." : bad ? "failed" : ok ? "done" : "not started";
+        g.text(state, 304 - 12, y + 18, Font::Body, bad ? th::BAD : ok ? th::OK : failed_ ? th::DIM : th::ACCENT, Align::Right);
     }
     if (failed_)
     {
-        g.text("A switch was not found. Check the endstops.", 160, 190, Font::Small, th::BAD, Align::Center);
+        // The board's reason, word-wrapped onto two lines
+        std::string msg = error_.empty() ? "homing failed" : error_;
+        if (msg.compare(0, 15, "homing failed: ") == 0)
+            msg = msg.substr(15);
+        std::string lines[2];
+        size_t pos = 0;
+        for (int l = 0; l < 2 && pos < msg.size(); l++)
+        {
+            size_t best = msg.size();
+            if (l == 0 && g.width(msg.c_str(), Font::Small) > 300)
+            {
+                best = std::string::npos;
+                for (size_t sp = msg.find(' '); sp != std::string::npos; sp = msg.find(' ', sp + 1))
+                {
+                    if (g.width(msg.substr(0, sp).c_str(), Font::Small) > 300)
+                        break;
+                    best = sp;
+                }
+                if (best == std::string::npos)
+                    best = msg.size();
+            }
+            lines[l] = g.fit(msg.substr(pos, best - pos), Font::Small, 300);
+            pos = best + 1;
+        }
+        g.text(lines[0], 160, 184, Font::Small, th::BAD, Align::Center);
+        g.text(lines[1], 160, 200, Font::Small, th::BAD, Align::Center);
         g.hint("tap back or hold the button");
     }
     else

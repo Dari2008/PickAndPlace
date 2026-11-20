@@ -3,7 +3,7 @@
 ![C++](https://img.shields.io/badge/C++-17-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![PlatformIO](https://img.shields.io/badge/PlatformIO-STM32-orange)
-![CadQuery](https://img.shields.io/badge/CadQuery-3D%20models-green)
+![Fusion 360](https://img.shields.io/badge/Fusion%20360-3D%20models-orange)
 
 <p align="center">
   <img src="images/renders/main-assembly.png" alt="Whole machine on its MDF base" width="720">
@@ -31,12 +31,9 @@
 
 ## Description
 I built PickAndPlace, a DIY SMD pick-and-place machine and solder paste dispenser, from an old Creality CR-10S.
-I let a **Raspberry Pi 5** run everything (jobs, display, cameras, website), and I wrote my own firmware for the
-**BTT Octopus V1.1** so that it only moves the motors.
-I gave the head a belt-driven *seesaw Z*: one motor lowers the vacuum picker while it raises the paste syringe,
+A **Raspberry Pi 5** is the main controller (jobs, display, cameras, website). A **Bigtreetech Octopus** is the motor and sensor controller.
+The Z-Axsis is a *seesaw* mechanism: one motor lowers the vacuum picker while it raises the paste syringe,
 and the other way round.
-By now I have written about 30,000 lines of code in about 170 files, plus about 8,000 lines of CadQuery for the
-3D models.
 
 More details:
 - [SOFTWARE.md](SOFTWARE.md): Pi setup, building, the display, the website, simulation
@@ -52,7 +49,7 @@ interface, and it turns an old CR-10S into a machine that builds my own PCBs.
 
 ## Features
 - Seesaw Z head: picker and paste syringe on one motor
-- Solder paste dots set in microlitres
+- Solder paste dispenser
 - Nozzle rotation with a NEMA 8 hollow-shaft motor
 - Automatic nozzle changer with 5 Juki slots and a sensor in each slot
 - Bottom camera corrects the offset and rotation of every part
@@ -70,7 +67,7 @@ interface, and it turns an old CR-10S into a machine that builds my own PCBs.
 ## Requirements
 - Raspberry Pi 5 (a Pi 3B+ works as well) with Raspberry Pi OS Bookworm, 64-bit
 - BTT Octopus V1.1 with TMC2209 drivers
-- 12 V / 40 A power supply, plus 5 V / 5 A for the Pi
+- 12 V / 30 A power supply, plus 5 V / 5 A for the Pi
 - Two USB cameras (top and bottom)
 - A 3D printer for the printed parts
 - Node.js and `build-essential` on the Pi
@@ -80,22 +77,20 @@ interface, and it turns an old CR-10S into a machine that builds my own PCBs.
 | | |
 |:-:|:-:|
 | <img src="images/current-status-irl.jpeg" alt="The machine so far" width="420"><br>The machine so far: frame, gantry, electronics on the MDF base | <img src="images/feeder-irl.jpeg" alt="Feeder rail" width="420"><br>Feeder rail with its cable chain |
-| <img src="images/head-mount-irl.jpeg" alt="Head" height="420"><br>The head on the X-carriage | <img src="images/raspi-irl.jpeg" alt="Raspberry Pi" width="420"><br>Raspberry Pi 5 with the carrier board in its housing |
+| <img src="images/head-mount-irl.jpeg" alt="Head" height="420"><br>The head on the Y-carriage | <img src="images/raspi-irl.jpeg" alt="Raspberry Pi" width="420"><br>Raspberry Pi 5 with the carrier board in its housing |
 
 
 ## 3D Models
-I designed every part in CadQuery and made all renders from the STEP files in [models/](models/).
-I put each unit in its own folder: `assembly.step` has everything in place, the other files are the single parts.
-I also put the whole machine with all electronics into one file: [models/main-assembly/assembly.step](models/main-assembly/assembly.step).
+I designed the models in Fusion 360 [models/](models/).
+Each Unit has its own folder. `assembly.step` has everything in place, the other files are the single parts.
 
 ### Head (seesaw Z)
 <img src="images/renders/head-mount.png" alt="Head with seesaw Z" width="420" align="right">
 
-I bolted a 3 mm aluminium plate with two MGN9 rails onto the CR-10 X-carriage.
-I put a NEMA17 at the top that drives one GT2 belt loop: I hung the **picker** on one side and the **paste syringe**
-on the other. When one goes down, the other comes up.
+I bolted a 3 mm aluminium plate with two MGN9 rails onto the CR-10 Y-carriage.
+A NEMA17 at the top drives one GT2 belt loop.
 
-- Travel ±62 mm, working stroke ±55 mm
+- Travel ±62 mm, working stroke ~±55 mm
 - Optical home sensor in the centre
 - Top camera in front
 
@@ -106,9 +101,9 @@ on the other. When one goes down, the other comes up.
 ### Nozzle changer
 <img src="images/renders/juki-tool-changer.png" alt="Juki nozzle changer" width="300" align="right">
 
-I made a changer with five slots for Juki 500 nozzles.
-The nozzle slides in from the front, and when the head lifts, the lid holds the collar and pulls the nozzle off.
-I put a TCRT5000 sensor behind each slot, so it sees if a nozzle is there.
+Five slots for Juki 500 nozzles.
+The nozzle slides in from the front. When the head lifts, the lid holds the collar and pulls the nozzle off.
+A TCRT5000 sensor behind each slot detects if a nozzle is there.
 
 [models/juki-tool-changer](models/juki-tool-changer/)
 
@@ -117,8 +112,8 @@ I put a TCRT5000 sensor behind each slot, so it sees if a nozzle is there.
 ### Feeders
 <img src="images/renders/feeder.png" alt="Tape feeder on its gantry" width="420" align="right">
 
-I designed tape feeders for 7" reels that ride on their own rail (the feeder gantry).
-I gave each feeder a sprocket drive, a peel-off spool, a WS2812 status LED and a QR code.
+Tape feeders for 7" reels on their own rail (the feeder gantry).
+Each feeder has a sprocket drive, a peel-off spool, a WS2812 status LED and a QR code.
 
 [models/feeder](models/feeder/)
 
@@ -137,8 +132,9 @@ I gave each feeder a sprocket drive, a peel-off spool, a WS2812 status LED and a
 ### Carrier board schematic
 ![Carrier board schematic](images/schematic.png)
 
-I designed a small board for the Pi's 40-pin header. I put the ADS1115 for the joystick and the buzzer on it,
-plus connectors for the display, the vacuum sensor, the joystick and the start / pause / stop buttons.
+I designed a small board for the Pi's 40-pin header.
+It holds the ADS1115 for the joystick, the buzzer and connectors for the display, the vacuum sensor, the joystick
+and the start / pause / stop buttons.
 
 ### PCB
 | Front | Back |
@@ -150,8 +146,8 @@ Front and back layer of the carrier board.
 ### Wiring
 ![Wiring: Raspberry Pi 5 and BTT Octopus](hardware/wiring.png)
 
-I drew every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus the motors,
-inputs and outputs on the Octopus.
+Every connection from the Pi to the display, joystick, sensors, buzzer and cameras, plus the motors, inputs
+and outputs on the Octopus.
 
 ### Octopus pin by pin
 ![Octopus wiring, pin by pin](hardware/octopus-wiring.png)
@@ -192,13 +188,13 @@ All screens and settings are in [UI.md](UI.md).
 - TypeScript + Node.js (`pap-web`: website)
 - PlatformIO / STM32 (`octopus-fw`: motion firmware)
 - LovyanGFX (display)
-- CadQuery (3D models)
+- Fusion 360 (3D models)
 - EasyEDA / KiCad (carrier board)
 
 
 ## Architecture
-I split the work: the Pi does the thinking, the Octopus does the moving. I made them talk over USB with a simple
-text protocol.
+The Pi does the thinking, the Octopus does the moving.
+They talk over USB with a simple text protocol.
 
 ```
  browser ──HTTP/WebSocket──> pap-web (TypeScript) ──TCP 127.0.0.1:7070──┐
@@ -208,9 +204,9 @@ text protocol.
  USB cameras (V4L2) ───────────────────────────────-┘    └── USB ──> Octopus (motion, endstops, outputs)
 ```
 
-- I wrote the vision without OpenCV
-- I keep the settings on the Pi (`~/pap-data`) and the machine values on the Octopus
-- I made the Octopus stop by itself if the Pi goes silent while it moves
+- Vision runs without OpenCV
+- Settings are stored on the Pi (`~/pap-data`), machine values on the Octopus
+- The Octopus stops by itself if the Pi goes silent while it moves
 
 
 ## Installation
@@ -266,7 +262,7 @@ On Windows just double-click `ui-preview.cmd`. Everything is in [SOFTWARE.md](SO
 
 ## Bill of materials
 
-Prices are what I paid (EUR, Nov 2026). The total is **about €678**: €668 for 48 items including the tools,
+Prices are what I paid (EUR, Nov 2026). The total is **about €664**: €654 for 47 items including the tools,
 plus about €10 shipping (Amazon shipped free). The Raspberry Pi is not counted, and €18 of the parts are
 optional. Tools are listed separately because you may already have them. The same list is in [BOM.csv](BOM.csv).
 
@@ -293,7 +289,7 @@ optional. Tools are listed separately because you may already have them. The sam
 
 | Part | Used for | Qty | Price | Shop |
 |---|---|:-:|--:|---|
-| Creality CR-10S | Base machine: frame, profiles, X-carriage, control box housing | 1 | 45.00 | Kleinanzeigen (only in Germany) |
+| Creality CR-10S | Base machine: frame, profiles, Y-carriage, control box housing | 1 | 45.00 | Kleinanzeigen (only in Germany) |
 | [STEPPERONLINE NEMA 17, 42 Ncm, 1.5 A, 5 pcs](https://www.amazon.de/dp/B0B38H2ZMR) | X / Y / Z / feeder motors | 1 | 35.00 | Amazon |
 | [QitinDasen GT2 belt 6 mm, 5 m, with pulleys, idlers, tensioners](https://www.amazon.de/dp/B07SHB3NBV) | Seesaw Z belt, feeder gantry | 1 | 15.49 | Amazon |
 | [Cable chain, 1 m](https://www.aliexpress.com/item/1005007435939757.html) | Cables to the head | 1 | 7.30 | AliExpress |
@@ -337,11 +333,10 @@ optional. Tools are listed separately because you may already have them. The sam
 | [Henakmsl 12 AWG silicone cable, 5 m (red + black)](https://www.amazon.de/dp/B0B7B2H8B9) | 12 V power to the Octopus | 1 | 12.99 | Amazon |
 | [URCIANOW 2-core wire 0.2 mm², red / black, 15 m](https://www.amazon.de/dp/B0F4QXYJGH) | Fans, sensors, LEDs | 1 | 7.99 | Amazon |
 | [QUARKZMAN ribbon cable, 10-pin, 1.27 mm, 4 m](https://www.amazon.de/dp/B0G15JT5KL) | Signal cables | 1 | 8.19 | Amazon |
-| [QUARKZMAN rainbow ribbon cable, 14-pin, 1.27 mm, 9 m](https://www.amazon.de/dp/B0DTYGHTHQ) | Signal cables | 1 | 14.29 | Amazon |
 | [JST XH 5-pin cable, female–female, 20 cm, 20 pcs](https://www.amazon.de/dp/B0G5XT59S7) | Sensor connections | 1 | 8.99 | Amazon |
 | [JST-XH connector kit, 2–6 pin](https://www.amazon.de/dp/B0BZHR5NCR) | Your own cables | 1 | 7.98 | Amazon |
 | [Gorffy fork cable lug assortment, 0.5–6 mm², 260 pcs](https://www.amazon.de/dp/B0CBS514LL) | Power supply terminals | 1 | 7.63 | Amazon |
-| | | | **83.47** | |
+| | | | **69.18** | |
 
 ### Fasteners and consumables
 
@@ -367,13 +362,13 @@ optional. Tools are listed separately because you may already have them. The sam
 | **M5** | Joining the aluminium profiles |
 | **Wood screws** (Spax 2 × 10 mm) | Parts onto the MDF base |
 
-I kept it to these four sizes so I only needed a few screw sets.
+Only these four sizes are used, so a few screw sets are enough.
 
 ---
 
 ## Tools
 
-I bought these tools for the build. They are not part of the machine, but they made it a lot easier:
+Not part of the machine, but they make the build a lot easier:
 
 | Tool | Used for | Price | Shop |
 |---|---|--:|---|
@@ -384,8 +379,7 @@ I bought these tools for the build. They are not part of the machine, but they m
 | [Mini 3-in-1 wire stripper / side cutter, 20–10 AWG](https://www.amazon.de/dp/B0FDQD4YRX) | Stripping and cutting wire | 6.79 | Amazon |
 | | | **41.03** | |
 
-I also used a soldering iron (for the carrier board and for pressing in the heat-set inserts), a 3D
-printer and a drill.
+Also needed: a soldering iron (for the carrier board and the heat-set inserts), a 3D printer and a drill.
 
 ### Total
 
@@ -396,7 +390,7 @@ printer and a drill.
 | [Head and nozzle](#head-and-nozzle) | 100.23 |
 | [Vacuum](#vacuum) | 52.10 |
 | [Solder paste](#solder-paste) | 10.99 |
-| [Wiring](#wiring-1) | 83.47 |
+| [Wiring](#wiring-1) | 69.18 |
 | [Fasteners and consumables](#fasteners-and-consumables) | 90.70 |
 | Shipping (about; Amazon shipped free) | 10.00 |
-| **Total** | **637.45** |
+| **Total** | **623.16** |

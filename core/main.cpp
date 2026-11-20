@@ -175,6 +175,14 @@ int main(int argc, char **argv)
     nozzles.load();
 
     octo.start(octoDev);
+    // SGTEST live values (!sg) from the board to the display and the website, as one write per
+    // line. Only sent while SGTEST blocks the command loop, so nothing else writes to the ports.
+    octo.onEvent([](const Record &e) {
+        if (e.type != "sg")
+            return;
+        const std::string line = e.text + "\n";
+        ports.all.write((const uint8_t *)line.data(), line.size());
+    });
     sensors.start("/dev/i2c-1", sim);
     joystick.begin(17, true); // your stick drives 3V3 when pressed (false: switch to GND)
     cams.setSimulation(sim);

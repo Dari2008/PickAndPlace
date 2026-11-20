@@ -69,6 +69,7 @@ public:
     float joyMin[2], joyCenter[2], joyMax[2]; // x, y
     uint8_t joyDeadzone;                      // % of half travel
     uint8_t joyInvert[2];
+    uint8_t joyJogInvert[2]; // jogging only: stick right / up moves the axis the other way
     uint8_t joySwap;
     float joyJogSpeed; // mm/s at full deflection
     uint16_t joyHoldMs;

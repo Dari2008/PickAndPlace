@@ -10,6 +10,7 @@ uint8_t linkLogLevel = 1;
 // ---- Channel ----------------------------------------------------------------------------------
 void Channel::pushLine(const std::string &line)
 {
+    commands::urgentLine(line); // HALT / ESTOP can't wait behind a blocking HOME
     std::lock_guard<std::mutex> l(m_);
     in_.push_back(line);
 }

@@ -89,6 +89,9 @@ private:
     uint32_t upCrc_ = 0;
     int upStage_ = 0;
     std::atomic<uint32_t> lastRx_{0};
+    // A long command (HOME, SGTEST, FINDLEN, WAIT ...) is waiting for its answer: pap-core's command
+    // loop is blocked meanwhile and sends no status, which is not a lost link
+    std::atomic<bool> longWait_{false};
 };
 
 extern Link ctrl;

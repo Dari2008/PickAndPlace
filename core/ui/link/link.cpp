@@ -30,7 +30,7 @@ void Link::end()
 bool Link::connected() const
 {
     const uint32_t rx = lastRx_;
-    return rx != 0 && millis() - rx < 2000;
+    return rx != 0 && (millis() - rx < 2000 || longWait_);
 }
 
 uint32_t Link::defaultTimeout(const std::string &line)
@@ -39,7 +39,7 @@ uint32_t Link::defaultTimeout(const std::string &line)
         const size_t n = strlen(w);
         return line.size() >= n && strncasecmp(line.c_str(), w, n) == 0 && (line.size() == n || line[n] == ' ');
     };
-    if (starts("HOME"))
+    if (starts("HOME") || starts("FINDLEN"))
         return 330000;
     if (starts("CAL") || starts("SGTEST"))
         return 120000;
@@ -139,6 +139,7 @@ void Link::startNext()
         cur_ = std::move(queue_.front());
         queue_.pop_front();
         busy_ = true;
+        longWait_ = cur_.timeoutMs > 10000;
     }
     reply_ = Reply();
     upPos_ = 0;
@@ -155,6 +156,7 @@ void Link::finish(bool ok, const std::string &error, bool timeout)
     ReplyFn fn = cur_.fn;
     Reply r = std::move(reply_);
     busy_ = false;
+    longWait_ = false;
     cur_ = Request();
     if (fn)
         fn(r);

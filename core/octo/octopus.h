@@ -88,6 +88,10 @@ public:
     // Non-blocking: the answer is fetched with poll(ticket, reply) later.
     uint64_t send(const std::string &line, int timeoutMs = 0);
     bool poll(uint64_t ticket, OctoReply &out);
+    // HALT / ESTOP past the queue: written at once, even while a blocking command (HOME,
+    // SGTEST, PROBE) is on the wire - the board polls for these while it blocks. Its answer
+    // is expected right after the one on the wire and is dropped.
+    void urgent(const std::string &line);
 
     OctoStatus status();
     void onEvent(std::function<void(const Record &)> fn);
