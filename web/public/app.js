@@ -805,8 +805,7 @@ function renderCalibrate() {
         `<input type="number" id="caMeas" step="0.01" style="width:80px"> <span class="dim">mm</span> ${btn('axisFix', 'Correct steps')}`) +
       fields([['steps_x', 'X steps / mm'], ['steps_y', 'Y steps / mm'], ['steps_z', 'Z steps / mm'], ['steps_e1', 'E1 steps / mm'], ['steps_paste', 'Paste plunger steps / mm']])),
 
-    sec(2, 'heads', 'Heads: seesaw and paste tip', 'Z is the seesaw: 0 = level, − lowers the nozzle (head 2), + lowers the paste tip (head 1). Use a sheet of paper on the bed as feeler.',
-      stepRow('Nozzle reach', 'Jog Z down until the nozzle tip just grips the paper on the bed.', btn('reach2', 'Nozzle touches the bed')) +
+    sec(2, 'heads', 'Heads: seesaw and paste tip', 'Z is the seesaw: 0 = level, − lowers the nozzle (head 2), + lowers the paste tip (head 1); if it is the other way round, set invert_z 1. Use a sheet of paper on the bed as feeler. The vacuum nozzles are sprung, so their reach is not jogged: it comes from the load cell touch-off (Nozzles).',
       stepRow('Paste tip reach', 'Jog Z up until the paste tip just grips the paper.', btn('reach1', 'Paste tip touches the bed')) +
       stepRow('Paste tip offset 1/2', 'Jog X / Y until the nozzle tip is exactly over a mark (pen dot, fiducial).', btn('h1mark', 'Nozzle is on the mark')) +
       stepRow('Paste tip offset 2/2', 'Now jog X / Y until the paste tip is over the same mark.', btn('h1off', 'Paste tip is on the mark')) +
@@ -814,16 +813,20 @@ function renderCalibrate() {
 
     sec(3, 'bottom', 'Bottom camera', 'Before the top camera. Light on, nozzle tip (no part) roughly above the bottom camera, at the height it looks at parts.',
       stepRow('Calibrate', 'The head moves around by a few mm: scale, skew, rotation centre and the look position are measured.', btn('calBottom', 'Calibrate', 'primary')) +
+      stepRow('Checkerboard', 'After Calibrate: <a href="/checkerboard.html" target="_blank">print a checkerboard</a> (square size = cal_grid), lay it face down over the camera, sharp and filling the picture. One picture: lens distortion and exact scale.', btn('calBottomGrid', 'Checkerboard', 'primary')) +
+      stepRow('Lens without checkerboard', 'Instead of the checkerboard: tip still in the picture centre, it moves the tip to 9 places across the picture.', btn('calBottomLens', 'Lens')) +
       stepRow('Rotation direction', 'A part on the nozzle above the bottom camera; the nozzle turns a little.', btn('rotSign', 'Measure')) +
       stepRow('Test', 'A part on the nozzle: is it found (green outline in the picture)?', btn('testPart', 'Measure part')) +
-      fields(['cam_bottom_x', 'cam_bottom_y', 'cam_bottom_z', 'cam_bottom_cx', 'cam_bottom_cy', 'cam_bottom_rot_sign', 'cam_bottom_m00', 'cam_bottom_m01', 'cam_bottom_m10', 'cam_bottom_m11'])),
+      fields(['cal_grid', 'cam_bottom_x', 'cam_bottom_y', 'cam_bottom_z', 'cam_bottom_cx', 'cam_bottom_cy', 'cam_bottom_rot_sign', 'cam_bottom_m00', 'cam_bottom_m01', 'cam_bottom_m10', 'cam_bottom_m11', 'cam_bottom_k1', 'cam_bottom_k2'])),
 
-    sec(4, 'top', 'Top camera', 'A mark on the bed (fiducial, pen dot). Light on.',
-      stepRow('Calibrate', 'Top camera centred above the mark. The head moves around it: scale and skew.', btn('calTop', 'Calibrate', 'primary')) +
+    sec(4, 'top', 'Top camera', 'Best with a printed checkerboard; a mark on the bed (fiducial, pen dot) works too. Light on.',
+      stepRow('Checkerboard', '<a href="/checkerboard.html" target="_blank">print a checkerboard</a> (square size = cal_grid), lay it flat on the bed under the camera, sharp and filling the picture. Lens, scale and skew from the squares, rotation from two small moves.', btn('calTopGrid', 'Checkerboard', 'primary')) +
+      stepRow('On a mark', 'Instead of the checkerboard: camera centred above a mark, the head moves around it (scale, skew).', btn('calTop', 'Calibrate')) +
+      stepRow('Lens on a mark', 'After "On a mark", mark still in the picture centre: it lands at 9 places across the picture.', btn('calTopLens', 'Lens')) +
       stepRow('Offset 1/2', 'Jog the nozzle tip exactly onto the mark.', btn('topMark', 'Remember nozzle')) +
       stepRow('Offset 2/2', 'Jog the top camera roughly above the same mark.', btn('topOff', 'Measure offset')) +
       stepRow('Test', 'Is the mark found (green circle)?', btn('testMark', 'Find mark') + btn('centerMark', 'Centre on mark')) +
-      fields(['cam_top_off_x', 'cam_top_off_y', 'cam_top_m00', 'cam_top_m01', 'cam_top_m10', 'cam_top_m11'])),
+      fields(['cal_grid', 'cam_top_off_x', 'cam_top_off_y', 'cam_top_m00', 'cam_top_m01', 'cam_top_m10', 'cam_top_m11', 'cam_top_k1', 'cam_top_k2'])),
 
     sec(5, 'loadcell', 'Load cell (nozzle tip height)', 'The pad on the load cell between the feeders. Nothing on the pad for the tare.',
       live('lcLive') +
@@ -877,6 +880,21 @@ function renderCalibrate() {
       stepRow('Test', 'Home this axis with the saved values. Stops too early: lower tmc_sg. Rams the end: raise it, or lower home_cur.', btn('sgHome', 'Home this axis', 'primary')) +
       fields(['home_cur', 'home_speed', 'home_blank', ['tmc_sg_x', 'X threshold'], ['tmc_sg_x2', 'X2 threshold'], ['tmc_sg_y', 'Y threshold'],
         ['tmc_sg_e1', 'Gantry threshold'], ['tmc_cur_x', 'X current'], ['tmc_cur_y', 'Y current'], ['tmc_cur_e1', 'Gantry current'], 'home_xy', 'home_dir_x', 'home_dir_y', 'e1_home', 'e1_home_dir'])),
+
+    sec(12, 'length', 'Axis length', 'How far X, Y or the gantry can travel: it homes, runs to the far end until it stalls, and measures. Homing must work first (section 11).',
+      stepRow('Find length', 'The axis runs the full way: keep the path clear.',
+        `<select id="flAxis"><option value="x">X</option><option value="y">Y</option><option value="e1">Gantry (E1)</option></select> ${btn('flFind', 'Find length', 'primary')}`) +
+      stepRow('Save', 'The length minus the pull-off becomes the travel (soft limit).', btn('flSave', 'Save as travel')) +
+      fields(['travel_x', 'travel_y', 'travel_e1'])),
+
+    sec(13, 'offsets', 'Head offsets', 'Nozzle, paste tip and top camera on one reference point: the bottom camera (finds the tips by itself) or a mark on the bed (by eye). Nozzle first.',
+      stepRow('Nozzle', 'Nozzle tip over the bottom camera (or on the mark), at its working height.', btn('hoNozzleCam', 'With bottom camera', 'primary') + btn('hoNozzle', 'On the mark')) +
+      stepRow('Paste tip', 'Paste tip over the bottom camera (or on the same mark).', btn('hoPasteCam', 'With bottom camera', 'primary') + btn('hoPaste', 'On the mark')) +
+      stepRow('Top camera', 'Top camera above the bottom camera lens (or the mark): it finds it; "By eye" when the mark sits on the cross.', btn('hoCamera', 'Find it', 'primary') + btn('hoCameraManual', 'By eye')) +
+      fields(['head1_offset_x', 'head1_offset_y', 'cam_top_off_x', 'cam_top_off_y', 'vhome', 'vhome_ref_x', 'vhome_ref_y', 'vhome_max'])),
+
+    sec(14, 'display', 'Touch screen', 'The machine display\'s touch.',
+      stepRow('Calibrate touch', 'Opens the calibration on the display: tap the 4 crosses there, one after the other. Press the joystick to cancel.', btn('touchCal', 'Calibrate touch'))),
   ];
 
   $('#view').innerHTML = `<div class="calgrid">
@@ -1017,8 +1035,8 @@ function renderCalibrate() {
       if (!old) throw new Error('no current value for ' + key);
       return set([[key, (old * a.d / m).toFixed(3)]]);
     },
-    reach2: async () => { const p = P(); if (p.z >= 0) throw new Error('Z must be below 0 (nozzle side down)'); return set([['head2_reach', f3(-p.z)]]); },
-    reach1: async () => { const p = P(); if (p.z <= 0) throw new Error('Z must be above 0 (paste side down)'); return set([['head1_reach', f3(p.z)]]); },
+    reach2: async () => { const p = P(); if (p.z >= 0) throw new Error('Z must be below 0 (nozzle side down). If the nozzle goes down at Z > 0, the seesaw runs backwards: set invert_z 1, then home Z again.'); return set([['head2_reach', f3(-p.z)]]); },
+    reach1: async () => { const p = P(); if (p.z <= 0) throw new Error('Z must be above 0 (paste side down). If the paste tip goes down at Z < 0, the seesaw runs backwards: set invert_z 1, then home Z again.'); return set([['head1_reach', f3(p.z)]]); },
     h1mark: async () => { mem.h1 = P(); return `nozzle at X ${mem.h1.x} Y ${mem.h1.y} remembered`; },
     h1off: async () => {
       if (!mem.h1) throw new Error('do step 1/2 first');
@@ -1026,9 +1044,38 @@ function renderCalibrate() {
       return set([['head1_offset_x', f3(mem.h1.x - p.x)], ['head1_offset_y', f3(mem.h1.y - p.y)]]);
     },
     calBottom: () => run('CAL BOTTOM', 'The head moves around the bottom camera by a few mm. Start?'),
+    calBottomGrid: () => run('CAL BOTTOM GRID', 'Checkerboard face down over the bottom camera, filling the picture. Start?'),
+    calTopGrid: () => run('CAL TOP GRID', 'Checkerboard flat under the top camera, filling the picture. The head moves a little. Start?'),
+    flFind: async () => {
+      const ax = $('#flAxis').value;
+      if (!(await confirmBox('The axis homes and runs to its far end. Path clear?', 'Start'))) return null;
+      const r = await cmd('FINDLEN ' + ax);
+      if (!r.ok) throw new Error(r.error);
+      const l = r.records.find((x) => x.type === 'findlen');
+      if (!l) return 'done';
+      mem.fl = { ax, suggest: l.f.suggest };
+      return `length ${l.f.mm} mm · travel would be ${l.f.suggest} mm`;
+    },
+    flSave: async () => {
+      if (!mem.fl) throw new Error('find the length first');
+      return set([['travel_' + mem.fl.ax, mem.fl.suggest]]);
+    },
+    hoNozzleCam: () => run('CAL HEADS NOZZLE CAM'),
+    hoNozzle: () => run('CAL HEADS NOZZLE'),
+    hoPasteCam: () => run('CAL HEADS PASTE CAM'),
+    hoPaste: () => run('CAL HEADS PASTE'),
+    hoCamera: () => run('CAL HEADS CAMERA'),
+    hoCameraManual: () => run('CAL HEADS CAMERA MANUAL'),
+    touchCal: async () => {
+      const r = await cmd('SCREEN CALIBRATE');
+      if (!r.ok) throw new Error(r.error);
+      return 'open on the display: tap the 4 crosses there';
+    },
     rotSign: () => run('CAL ROTSIGN'),
     testPart: () => run('CAM bottom MEASURE'),
     calTop: () => run('CAL TOP', 'The head moves around the mark by a few mm. Start?'),
+    calBottomLens: () => run('CAL BOTTOM LENS', 'The nozzle tip goes to 9 places across the bottom camera picture. Start?'),
+    calTopLens: () => run('CAL TOP LENS', 'The head moves so the mark lands at 9 places across the top camera picture. Start?'),
     topMark: () => run('CAL TOPOFFSET MARK'),
     topOff: () => run('CAL TOPOFFSET'),
     testMark: () => run('CAM top FIDUCIAL'),
@@ -1211,9 +1258,7 @@ async function renderSettings() {
   <div class="card"><h2>Machine display</h2>
     <div class="row spread" style="margin-top:8px"><div><b>Turn 180°</b><div class="dim">Picture upside down; the touch turns with it. Saved on the Pi.</div></div>
       <button id="dTurn">…</button></div>
-    <div class="row spread" style="margin-top:12px"><div><b>Touch calibration</b><div class="dim">Opens the calibration on the display: tap the 4 crosses there, one after the other.
-      Press the joystick to cancel.</div></div><button id="dCal">Calibrate touch</button></div>
-    <div id="dCalHint" class="dim" style="margin-top:8px"></div></div>
+    <div class="dim" style="margin-top:12px">Touch calibration: Calibrate → Touch screen.</div></div>
   <div id="sGroups"><div class="card dim">Loading…</div></div>
   <div class="card"><div class="row spread"><h2>Motion board SD card</h2><button class="small" id="osOpen">Show the card</button></div>
     <p class="dim">Jobs run from the Pi. Files on the microSD in the Octopus slot can be copied over (into <b>/jobs</b>), then run from there.</p>
@@ -1247,10 +1292,6 @@ async function renderSettings() {
   };
   send({ t: 'cmd', line: 'SCREEN TURN' }).then(showTurn);
   $('#dTurn').onclick = async () => showTurn(await cmd('SCREEN TURN ' + ($('#dTurn').dataset.turned === '1' ? 0 : 1)));
-  $('#dCal').onclick = async () => {
-    const r = await cmd('SCREEN CALIBRATE');
-    if (r.ok) $('#dCalHint').textContent = 'Calibration is open on the machine\'s display – tap the 4 crosses there. "Touch calibrated" appears when it is done.';
-  };
 
   const r = await cmd('SETTINGS', { quiet: true });
   const box = $('#sGroups');

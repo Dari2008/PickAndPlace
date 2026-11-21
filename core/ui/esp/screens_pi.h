@@ -52,8 +52,48 @@ public:
     void drag(int dy) override { list_.dragBy(dy); }
 
 private:
-    void run(const std::string &cmd, const std::string &what);
     ListView list_;
+};
+
+// Calibration -> Bottom / Top camera: checkerboard, on the tip / a mark, lens, offset or rotation direction
+class CamCalScreen : public Screen
+{
+public:
+    void open(int cam); // 0 bottom, 1 top
+    void enter() override { list_.reset(); }
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    void drag(int dy) override { list_.dragBy(dy); }
+
+private:
+    int cam_ = 0;
+    ListView list_;
+};
+
+// Runs a CAL command and shows what was saved
+void calRun(const std::string &cmd, const std::string &what);
+// cal_grid to the next common checkerboard square size
+void cycleGridSize();
+
+// Menu -> Setup: every bring-up step in order, one page each (screens_setup.cpp)
+class SetupScreen : public Screen
+{
+public:
+    void enter() override;
+    void resume() override { ui.redraw(); }
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    void tick() override { stickJog(-1); }
+    bool usesStick() const override { return true; }
+    uint8_t liveRects(Rect *r) const override;
+    static int steps();
+
+private:
+    void go(int step);
+    std::vector<std::string> row(int r) const;
+    std::string liveLine() const;
+    int step_ = 0, axis_ = 0;
+    float measured_ = 100; // steps per mm: what the ruler says
 };
 
 // Calibration -> Nozzle sensor order: trigger the slots in order, each one's sensor bit is learned
@@ -214,6 +254,8 @@ extern ChoiceScreen choiceScreen;
 extern NozzlesScreen nozzlesScreen;
 extern CamerasScreen camerasScreen;
 extern CalibrationScreen calibrationScreen;
+extern CamCalScreen camCalScreen;
+extern SetupScreen setupScreen;
 extern VacuumScreen vacuumScreen;
 extern NozzleLearnScreen nozzleLearnScreen;
 extern JoystickScreen joystickScreen;

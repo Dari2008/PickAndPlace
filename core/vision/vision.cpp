@@ -70,7 +70,7 @@ namespace vision
             return false;
         }
         markCircle(BOTTOM, f, t.x, t.y, t.size * 0.6f); // size = sqrt(area): radius of that disc ~0.56 size
-        pxToMm(m, t.x - nx, t.y - ny, dx, dy);
+        camPxToMm(m, settings.cam[BOTTOM].k, f.gray.w, f.gray.h, t.x, t.y, nx, ny, dx, dy);
         if (hypotf(dx, dy) > settings.visionMaxOffset)
         {
             err = "nozzle tip too far off centre";
@@ -160,7 +160,7 @@ namespace vision
             return false;
         }
         markRect(BOTTOM, f, p.rect);
-        pxToMm(m, p.cx - nx, p.cy - ny, r.dx, r.dy);
+        camPxToMm(m, settings.cam[BOTTOM].k, f.gray.w, f.gray.h, p.cx, p.cy, nx, ny, r.dx, r.dy);
         r.rotSign = settings.camBottomRotSign >= 0 ? 1.0f : -1.0f;
         r.angle = r.rotSign * angleToMachine(m, p.angle);
         const float k = mmPerPx(m);
@@ -200,7 +200,7 @@ namespace vision
         }
         else
             markCircle(TOP, f, ft.x, ft.y, ft.size); // size = radius
-        pxToMm(m, ft.x - cx, ft.y - cy, dx, dy);
+        camPxToMm(m, settings.cam[TOP].k, f.gray.w, f.gray.h, ft.x, ft.y, cx, cy, dx, dy);
         return true;
     }
 

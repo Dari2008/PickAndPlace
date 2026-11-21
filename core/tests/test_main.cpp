@@ -216,6 +216,173 @@ static void testCalibrationMaths()
     CHECK_NEAR(normalize45(-46), 44, 1e-4);
 }
 
+static void testLensFit()
+{
+    // Synthetic camera 640 x 480: 0.04 mm/px turned 10 deg, barrel distortion k1 = -0.08, k2 = 0.01.
+    // The mark is seen where the distorted lens puts it for a 3 x 3 grid of head moves (top camera).
+    const float w = 640, h = 480, a = 10.0f * 3.14159265f / 180.0f, s = 0.04f;
+    const float M[4] = {-s * cosf(a), s * sinf(a), -s * sinf(a), -s * cosf(a)}; // top camera: sign -1
+    const float kTrue[2] = {-0.08f, 0.01f};
+    const float det = M[0] * M[3] - M[1] * M[2];
+    const float R2 = 320.0f * 320.0f + 240.0f * 240.0f;
+    float moves[9][2], px[9][2];
+    int n = 0;
+    for (int iy = -1; iy <= 1; iy++)
+        for (int ix = -1; ix <= 1; ix++)
+        {
+            const float mx = ix * 6.0f, my = iy * 4.5f;
+            // undistorted pixel offset from the centre for a mark offset of -move (the camera moved)
+            const float ux = (M[3] * -mx - M[1] * -my) / det, uy = (-M[2] * -mx + M[0] * -my) / det;
+            // distort: q with q (1 + k1 r^2 + k2 r^4) = u (fixed-point steps)
+            float qx = ux, qy = uy;
+            for (int it = 0; it < 50; it++)
+            {
+                const float r2 = (qx * qx + qy * qy) / R2, f = 1 + kTrue[0] * r2 + kTrue[1] * r2 * r2;
+                qx = ux / f, qy = uy / f;
+            }
+            moves[n][0] = mx, moves[n][1] = my;
+            px[n][0] = 320 + qx, px[n][1] = 240 + qy;
+            n++;
+        }
+    float m[4], k[2], rmsLin, rmsLens;
+    CHECK(fitLens(moves, px, n, w, h, -1, m, k, rmsLin, rmsLens));
+    CHECK_NEAR(k[0], kTrue[0], 0.01);
+    CHECK_NEAR(k[1], kTrue[1], 0.02);
+    for (int i = 0; i < 4; i++)
+        CHECK_NEAR(m[i], M[i], 0.001);
+    CHECK(rmsLens < 0.05f);
+    CHECK(rmsLin > rmsLens * 10);
+    // A corner measurement converts back to the right mm with the correction
+    float dx, dy;
+    camPxToMm(m, k, w, h, px[0][0], px[0][1], 320, 240, dx, dy);
+    CHECK_NEAR(dx, -moves[0][0], 0.02);
+    CHECK_NEAR(dy, -moves[0][1], 0.02);
+}
+
+
+// Synthetic camera picture of a checkerboard: scale s mm/px, turned a deg, barrel k1, squares sq mm.
+// bleed: ink spreads into the white squares by this share of a square (dark squares touch at the corners);
+// vignette: brightness at the picture corners (1 = even light); noise: +- grey levels; blur: box radius px.
+struct BoardPic
+{
+    float s = 0.03f, a = 7.0f, sq = 1.5f, k1 = -0.1f, bleed = 0, vignette = 1, ox = 0.3f, oy = 0.2f;
+    int noise = 0, blur = 0;
+};
+
+static Gray makeBoard(const BoardPic &b)
+{
+    const int W = 640, H = 480, SS = 3;
+    const float a = b.a * 3.14159265f / 180.0f, R2 = 320.0f * 320.0f + 240.0f * 240.0f;
+    Gray g(W, H, 0);
+    std::mt19937 rng(7);
+    std::uniform_int_distribution<int> nd(-b.noise, b.noise);
+    for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++)
+        {
+            float sum = 0;
+            for (int sy = 0; sy < SS; sy++)
+                for (int sx = 0; sx < SS; sx++)
+                {
+                    // seen pixel -> undistorted -> board mm
+                    const float qx = x + (sx + 0.5f) / SS - 320, qy = y + (sy + 0.5f) / SS - 240;
+                    const float r2 = (qx * qx + qy * qy) / R2, f = 1 + b.k1 * r2;
+                    const float ux = qx * f * b.s, uy = qy * f * b.s;
+                    const float bx = (cosf(a) * ux + sinf(a) * uy + b.ox) / b.sq, by = (-sinf(a) * ux + cosf(a) * uy + b.oy) / b.sq;
+                    const int ix = (int)floorf(bx), iy = (int)floorf(by);
+                    const float fx = bx - ix, fy = by - iy;
+                    bool white = (ix + iy) & 1;
+                    if (white && (fx < b.bleed || fx > 1 - b.bleed || fy < b.bleed || fy > 1 - b.bleed))
+                        white = false;
+                    sum += white ? 230 : 25;
+                }
+            const float r2 = ((x - 320.0f) * (x - 320.0f) + (y - 240.0f) * (y - 240.0f)) / R2;
+            const float v = sum / (SS * SS) * (1 - (1 - b.vignette) * r2) + (b.noise ? nd(rng) : 0);
+            g.at(x, y) = (uint8_t)std::max(0.0f, std::min(255.0f, v));
+        }
+    for (int r = 0; r < b.blur; r++)
+    {
+        Gray o = g;
+        for (int y = 1; y < H - 1; y++)
+            for (int x = 1; x < W - 1; x++)
+            {
+                int t = 0;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                        t += g.at(x + dx, y + dy);
+                o.at(x, y) = (uint8_t)(t / 9);
+            }
+        g = o;
+    }
+    return g;
+}
+
+static void checkBoard(const char *what, const BoardPic &b, size_t minPts)
+{
+    const Gray g = makeBoard(b);
+    std::vector<GridPt> pts;
+    std::string err;
+    const bool ok = detectGrid(g, pts, err);
+    CHECK(ok);
+    if (!ok)
+    {
+        std::cout << "  grid (" << what << "): " << err << std::endl;
+        return;
+    }
+    CHECK(pts.size() >= minPts);
+    float k[2], A[4], rl, rk;
+    CHECK(fitGrid(pts, b.sq, 640, 480, k, A, rl, rk));
+    CHECK_NEAR(k[0], b.k1, 0.03);
+    CHECK_NEAR(sqrtf(fabsf(A[0] * A[3] - A[1] * A[2])), 1.0f / b.s, 0.4);
+    CHECK(rk < 0.6f);
+    if (rk >= 0.6f || fabsf(k[0] - b.k1) >= 0.03f)
+        std::cout << "  grid (" << what << "): " << pts.size() << " points, k1 " << k[0] << ", rms " << rk << std::endl;
+}
+
+static void testGridCal()
+{
+    BoardPic b;
+    checkBoard("clean", b, 60);
+    // printed: ink bleed, light falls off towards the corners, a bit soft, noisy
+    BoardPic p;
+    p.bleed = 0.06f, p.vignette = 0.45f, p.blur = 2, p.noise = 10;
+    checkBoard("printed", p, 60);
+    // strong bleed: the dark squares grow into one piece
+    BoardPic q = p;
+    q.bleed = 0.12f, q.a = 31;
+    checkBoard("ink bleed", q, 60);
+    // small squares (~20 px) and big ones (~100 px, few on the picture)
+    BoardPic sm = p;
+    sm.sq = 0.6f, sm.blur = 1;
+    checkBoard("small squares", sm, 200);
+    BoardPic bg = p;
+    bg.sq = 3.0f, bg.k1 = -0.05f;
+    checkBoard("big squares", bg, 15);
+    float Q[4];
+    const float M[4] = {0.9f, -0.5f, 0.45f, 0.95f};
+    nearestOrthogonal(M, Q);
+    CHECK_NEAR(Q[0] * Q[3] - Q[1] * Q[2], 1.0f, 0.001);
+}
+
+
+static void testCrashGuard()
+{
+    CHECK(lastOk(cmd("HOME", 60000)));
+    cmd("WAIT", 60000);
+    CHECK(lastOk(cmd("SET travel_y 250")));
+    const float ty = octo.valueNum("travel_y", 0);
+    CHECK(ty > 0);
+    // absolute beyond travel: refused; relative: stops at the edge; at the edge: refused
+    CHECK(!lastOk(cmd("MOVE y=" + std::to_string(ty + 50))));
+    CHECK(!lastOk(cmd("MOVE y=-5")));
+    CHECK(lastOk(cmd("JOG y=" + std::to_string(ty + 500) + " speed=200", 60000)));
+    cmd("WAIT", 60000);
+    delay(300);
+    CHECK_NEAR(octo.status().pos[OY], ty, 0.05);
+    CHECK(!lastOk(cmd("JOG y=10")));
+    CHECK(lastOk(cmd("JOG y=-10 speed=200", 60000)));
+    cmd("WAIT", 60000);
+}
+
 static void testPapCheck()
 {
     feeders.scan();
@@ -819,7 +986,7 @@ int main()
         void (*fn)();
     } tests[] = {
         {"settings", testSettings}, {"settings catalog", testSettingsCatalog},       {"joystick axis", testJoystickAxis},   {"detect part", testDetectPart},
-        {"detect features", testDetectFeatures}, {"calibration maths", testCalibrationMaths},
+        {"detect features", testDetectFeatures}, {"calibration maths", testCalibrationMaths}, {"lens distortion fit", testLensFit}, {"checkerboard calibration", testGridCal}, {"crash guard (soft limits)", testCrashGuard},
         {"nozzle sensor order", testNozzleLearn}, {"pap check", testPapCheck},      {"job run (simulated machine)", testJobRun}, {"feeder teeth", testFeederTeeth}, {"nozzle changer", testNozzles}, {"feeder QR codes", testFeederQr}, {"camera lights", testLights}, {"Octopus SD card", testOctoSd}, {"load cell touch-off", testLoadcell}, {"pump connected or not", testPumpUsed},
     };
     for (auto &t : tests)

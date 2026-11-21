@@ -14,9 +14,17 @@
 //   SCREEN TURN [0|1]                                 screen turned=0|1  (picture 180 degrees, touch turns with it)
 //   SCREEN CALIBRATE                                  opens the touch calibration on the display (tap 4 crosses there)
 //   CAL TOP [step=]          top camera scale / rotation / skew (camera centred above a mark)
+//   CAL HEADS NOZZLE [CAM] | PASTE [CAM] | CAMERA [MANUAL]   one reference (a mark, or with CAM the
+//                            bottom camera) for nozzle, paste tip and top camera -> head1_offset_x / _y,
+//                            cam_top_off_x / _y (+ vhome_ref_x / _y with the bottom camera); nozzle first
 //   CAL TOPOFFSET MARK       remember the nozzle position above a mark (nozzle tip on the mark)
 //   CAL TOPOFFSET            then: camera roughly above the same mark -> cam_top_off_x / _y
 //   CAL BOTTOM [step=]       nozzle tip above the bottom camera: matrix, rotation centre, look position
+//   CAL TOP LENS | BOTTOM LENS   after CAL TOP / BOTTOM: 3 x 3 grid across the picture -> lens distortion
+//                            cam_*_k1 / _k2 and a refined matrix (result: rms before / after)
+//   CAL TOP GRID | BOTTOM GRID [size=]   printed checkerboard (squares of size mm, default cal_grid) in the
+//                            picture: lens k1 / k2, scale and skew from one picture; rotation from two small
+//                            head moves (top) or the previous matrix (bottom)
 //   CAL ROTSIGN              part on the nozzle above the bottom camera: turn direction
 //   CAL VACUUM BASE | OPEN | BLOCKED   pump off / nozzle open / nozzle blocked -> vac_baseline, vac_pick_min
 //   CAL JOY CENTER | RANGE [ms=5000]   joystick centre / full circles for min / max
@@ -347,6 +355,109 @@ static bool jogAndMark(int cam, const char *jog, Feature &f, std::string &err)
     return f.ok;
 }
 
+// Where the head really is: wait until it stands (the joystick may still be braking), then POS
+static bool headPosition(float &x, float &y)
+{
+    octo.call("WAIT", 60000);
+    const OctoReply r = octo.call("POS");
+    const Record *pos = r.first("pos");
+    if (!pos)
+        return false;
+    x = pos->num("x"), y = pos->num("y");
+    return true;
+}
+
+// Nozzle / paste tip seen by the bottom camera (bottom light on for it): d = tip position relative to
+// the point on the optical axis (picture centre), mm
+static bool tipInBottomCamera(float &dx, float &dy, std::string &err)
+{
+    if (!vision::available(vision::BOTTOM))
+    {
+        err = "bottom camera not available";
+        return false;
+    }
+    std::string e2;
+    octoOk("LIGHT bottom ON", e2);
+    Feature f;
+    const bool ok = jogAndMark(vision::BOTTOM, nullptr, f, err);
+    octoOk("LIGHT bottom 0", e2);
+    if (!ok)
+        return false;
+    Frame fr;
+    cams.latest(vision::BOTTOM, fr);
+    camPxToMm(settings.cam[vision::BOTTOM].m, settings.cam[vision::BOTTOM].k, fr.gray.w, fr.gray.h, f.x, f.y, fr.gray.w / 2.0f,
+              fr.gray.h / 2.0f, dx, dy);
+    return true;
+}
+
+// Mark (or the bottom camera lens) seen by the top camera: mark = camera centre + d, mm
+static bool markInTopCamera(float &dx, float &dy, std::string &err)
+{
+    if (!vision::available(vision::TOP))
+    {
+        err = "top camera not available";
+        return false;
+    }
+    std::string e2;
+    octoOk("LIGHT bottom 0", e2); // it would shine into the top camera
+    Feature f;
+    if (!jogAndMark(vision::TOP, nullptr, f, err))
+        return false;
+    Frame fr;
+    cams.latest(vision::TOP, fr);
+    camPxToMm(settings.cam[vision::TOP].m, settings.cam[vision::TOP].k, fr.gray.w, fr.gray.h, f.x, f.y, fr.gray.w / 2.0f,
+              fr.gray.h / 2.0f, dx, dy);
+    return true;
+}
+
+namespace commands
+{
+    bool visualHome(float &dx, float &dy, std::string &err)
+    {
+        dx = dy = 0;
+        if (!settings.vhome)
+        {
+            err = "visual homing is off (vhome)";
+            return false;
+        }
+        const float rx = settings.vhomeRef[0], ry = settings.vhomeRef[1];
+        if (rx < 0 || ry < 0)
+        {
+            err = "no reference yet: Calibration > Head offsets with the bottom camera";
+            return false;
+        }
+        // Top camera over the reference: head = reference - camera offset
+        char line[96];
+        snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f speed=%.1f", rx - settings.camTopOffset[0], ry - settings.camTopOffset[1],
+                 settings.travelSpeed);
+        if (!octoOk(line, err))
+            return false;
+        float mx, my;
+        if (!markInTopCamera(mx, my, err))
+            return false;
+        float hx, hy;
+        if (!headPosition(hx, hy))
+        {
+            err = "no position from the motion board";
+            return false;
+        }
+        // Seen at head + offset + m; it really is at the reference -> the position is off by that much
+        dx = hx + settings.camTopOffset[0] + mx - rx;
+        dy = hy + settings.camTopOffset[1] + my - ry;
+        if (fabsf(dx) > settings.vhomeMax || fabsf(dy) > settings.vhomeMax)
+        {
+            snprintf(line, sizeof(line), "correction %.2f / %.2f mm is more than vhome_max", dx, dy);
+            err = line;
+            return false;
+        }
+        snprintf(line, sizeof(line), "SETPOS x=%.4f y=%.4f", hx - dx, hy - dy);
+        if (!octoOk(line, err))
+            return false;
+        motion.syncTargets();
+        return true;
+    }
+}
+
 static void calResult(Print &p, const char *what, const float m[4])
 {
     out::rec(p, PSTR("cal"));
@@ -382,12 +493,200 @@ static bool matrixCal(int cam, float step, float sign, float m[4], std::string &
     snprintf(jog, sizeof(jog), "JOG y=%.4f speed=20", -step);
     octoOk(jog, err);
     octoOk("WAIT", err);
+    // With a lens calibration: measure in undistorted pixels
+    Frame fr;
+    if (cams.latest(cam, fr))
+        for (Feature *f : {&p0, &px, &py})
+            undistortPx(settings.cam[cam].k, fr.gray.w, fr.gray.h, f->x, f->y);
     const float d[2][2] = {{px.x - p0.x, px.y - p0.y}, {py.x - p0.x, py.y - p0.y}};
     if (!matrixFromMoves(d, step, sign, m))
     {
         err = "the mark did not move: step too small or wrong mark";
         return false;
     }
+    return true;
+}
+
+// Lens: the mark (top) or the nozzle tip (bottom) at a 3 x 3 grid reaching ~70 % to the picture edge,
+// then matrix + k1 / k2 fitted together (fitLens). Needs a first CAL TOP / BOTTOM for the scale.
+static bool lensCal(int cam, float sign, float m[4], float k[2], float &rmsLin, float &rmsLens, std::string &err)
+{
+    Feature f0;
+    if (!jogAndMark(cam, nullptr, f0, err))
+        return false;
+    Frame fr;
+    if (!cams.latest(cam, fr))
+    {
+        err = "no picture";
+        return false;
+    }
+    const float w = fr.gray.w, h = fr.gray.h, scale = mmPerPx(settings.cam[cam].m);
+    if (scale <= 0)
+    {
+        err = "calibrate the camera first (scale)";
+        return false;
+    }
+    // Reach: from where the mark is now, about 70 % of the way to the nearer edge
+    const float dxMm = 0.35f * w * scale, dyMm = 0.35f * h * scale;
+    float start[2];
+    {
+        const OctoReply r = octo.call("POS");
+        const Record *pos = r.first("pos");
+        if (!pos)
+        {
+            err = "no position from the motion board";
+            return false;
+        }
+        start[0] = pos->num("x"), start[1] = pos->num("y");
+    }
+    float moves[9][2], px[9][2];
+    int n = 0;
+    bool ok = true;
+    for (int iy = -1; iy <= 1 && ok; iy++)
+        for (int ix = -1; ix <= 1 && ok; ix++)
+        {
+            char line[80];
+            snprintf(line, sizeof(line), "MOVE x=%.4f y=%.4f speed=20", start[0] + ix * dxMm, start[1] + iy * dyMm);
+            Feature f;
+            if (!jogAndMark(cam, line, f, err))
+            {
+                err = "at " + std::to_string(ix) + " / " + std::to_string(iy) + ": " + err;
+                ok = false;
+                break;
+            }
+            moves[n][0] = ix * dxMm, moves[n][1] = iy * dyMm;
+            px[n][0] = f.x, px[n][1] = f.y;
+            n++;
+        }
+    char back[80];
+    snprintf(back, sizeof(back), "MOVE x=%.4f y=%.4f speed=20", start[0], start[1]);
+    std::string e2;
+    octoOk(back, e2);
+    octoOk("WAIT", e2);
+    if (!ok)
+        return false;
+    if (!fitLens(moves, px, n, w, h, sign, m, k, rmsLin, rmsLens))
+    {
+        err = "fit failed: the mark did not move as expected";
+        return false;
+    }
+    return true;
+}
+
+// Checkerboard in a fresh picture; points undistorted with k
+static bool gridPicture(int cam, const float k[2], std::vector<GridPt> &pts, float &w, float &h, std::string &err)
+{
+    delay(settings.camSettleMs);
+    Frame fr;
+    if (!cams.frameAfter(cam, millis(), fr, 3000))
+    {
+        err = "no picture";
+        return false;
+    }
+    w = fr.gray.w, h = fr.gray.h;
+    if (!detectGrid(fr.gray, pts, err))
+    {
+        // keep what the camera saw, to look at it (website: Files)
+        const char *pic = cam == 0 ? "/captures/grid_fail_bottom.jpg" : "/captures/grid_fail_top.jpg";
+        if (vision::capture((vision::Cam)cam, pic))
+            err += std::string(" - picture: ") + pic;
+        return false;
+    }
+    if (k)
+        for (GridPt &g : pts)
+            undistortPx(k, w, h, g.x, g.y);
+    return true;
+}
+
+// Mean shift of the grid between two pictures (squares matched by nearest, shift < half a square)
+static bool gridShift(const std::vector<GridPt> &a, const std::vector<GridPt> &b, float squarePx, float &dx, float &dy)
+{
+    double sx = 0, sy = 0;
+    int n = 0;
+    for (const GridPt &p : a)
+    {
+        const GridPt *best = nullptr;
+        float bd = 0.45f * squarePx * 0.45f * squarePx;
+        for (const GridPt &q : b)
+        {
+            const float d = (q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y);
+            if (d < bd)
+                bd = d, best = &q;
+        }
+        if (best)
+            sx += best->x - p.x, sy += best->y - p.y, n++;
+    }
+    if (n < 6)
+        return false;
+    dx = (float)(sx / n), dy = (float)(sy / n);
+    return true;
+}
+
+// CAL TOP / BOTTOM GRID: k from the board; A_b = undistorted px per mm along the board. The machine
+// matrix is A_b turned by the board rotation Q: A_move = A_b Q (px per mm of head move), m = sign A_move^-1.
+static bool gridCal(int cam, float size, float sign, float m[4], float k[2], float &rmsLin, float &rmsLens,
+                    float &moveScale, int &squares, std::string &err)
+{
+    std::vector<GridPt> pts;
+    float w, h, A[4];
+    if (!gridPicture(cam, nullptr, pts, w, h, err))
+        return false;
+    squares = (int)pts.size();
+    if (!fitGrid(pts, size, w, h, k, A, rmsLin, rmsLens))
+    {
+        err = "fit failed";
+        return false;
+    }
+    const float detA = A[0] * A[3] - A[1] * A[2];
+    const float Ai[4] = {A[3] / detA, -A[1] / detA, -A[2] / detA, A[0] / detA};
+    float Am[4]; // px per mm of head move, measured (top) or from the old matrix (bottom)
+    moveScale = 0;
+    if (sign < 0)
+    {
+        // Top camera: two small moves (under half a square, so the squares can be matched)
+        const float d = 0.3f * size, squarePx = sqrtf(fabsf(detA)) * size;
+        std::vector<GridPt> p0, px, py;
+        float sh[2][2];
+        char jog[64];
+        bool ok = gridPicture(cam, k, p0, w, h, err);
+        snprintf(jog, sizeof(jog), "JOG x=%.4f speed=20", d);
+        ok = ok && octoOk(jog, err) && octoOk("WAIT", err) && gridPicture(cam, k, px, w, h, err);
+        snprintf(jog, sizeof(jog), "JOG x=%.4f y=%.4f speed=20", -d, d);
+        ok = ok && octoOk(jog, err) && octoOk("WAIT", err) && gridPicture(cam, k, py, w, h, err);
+        std::string e2;
+        snprintf(jog, sizeof(jog), "JOG y=%.4f speed=20", -d);
+        octoOk(jog, e2);
+        octoOk("WAIT", e2);
+        if (!ok)
+            return false;
+        if (!gridShift(p0, px, squarePx, sh[0][0], sh[0][1]) || !gridShift(p0, py, squarePx, sh[1][0], sh[1][1]))
+        {
+            err = "the grid did not follow the head moves";
+            return false;
+        }
+        Am[0] = sh[0][0] / d, Am[1] = sh[1][0] / d, Am[2] = sh[0][1] / d, Am[3] = sh[1][1] / d;
+        moveScale = sqrtf(fabsf(Am[0] * Am[3] - Am[1] * Am[2]) / fabsf(detA));
+    }
+    else
+    {
+        const float *o = settings.cam[cam].m, det = o[0] * o[3] - o[1] * o[2];
+        if (fabsf(det) < 1e-12f)
+        {
+            err = "calibrate the camera first (rotation)";
+            return false;
+        }
+        // A = sign m^-1
+        Am[0] = sign * o[3] / det, Am[1] = sign * -o[1] / det, Am[2] = sign * -o[2] / det, Am[3] = sign * o[0] / det;
+    }
+    // Q = A_b^-1 A_move, the nearest pure rotation / mirror
+    const float M[4] = {Ai[0] * Am[0] + Ai[1] * Am[2], Ai[0] * Am[1] + Ai[1] * Am[3], Ai[2] * Am[0] + Ai[3] * Am[2],
+                        Ai[2] * Am[1] + Ai[3] * Am[3]};
+    float Q[4];
+    nearestOrthogonal(M, Q);
+    const float B[4] = {A[0] * Q[0] + A[1] * Q[2], A[0] * Q[1] + A[1] * Q[3], A[2] * Q[0] + A[3] * Q[2],
+                        A[2] * Q[1] + A[3] * Q[3]};
+    const float detB = B[0] * B[3] - B[1] * B[2];
+    m[0] = sign * B[3] / detB, m[1] = sign * -B[1] / detB, m[2] = sign * -B[2] / detB, m[3] = sign * B[0] / detB;
     return true;
 }
 
@@ -408,6 +707,73 @@ void cmdCal(Port &port, Args &args)
         if (!vision::available((vision::Cam)cam))
         {
             out::error2(p, PSTR("camera not available:"), cams.error(cam).c_str());
+            return;
+        }
+        if (args.is(2, PSTR("GRID")))
+        {
+            float size = settings.calGrid;
+            args.kv(PSTR("size"), size, bad);
+            const char *pre = top ? "cam_top_" : "cam_bottom_";
+            float m[4], k[2], rmsLin, rmsLens, moveScale;
+            int squares = 0;
+            if (!top)
+                octoOk("LIGHT bottom ON", err);
+            const bool ok = gridCal(cam, size, top ? -1.0f : 1.0f, m, k, rmsLin, rmsLens, moveScale, squares, err);
+            if (!top)
+                octoOk("LIGHT bottom 0", err);
+            if (!ok)
+            {
+                out::error2(p, PSTR("grid calibration failed:"), err.c_str());
+                return;
+            }
+            const char *suf[4] = {"m00", "m01", "m10", "m11"};
+            for (int i = 0; i < 4; i++)
+                setNum((std::string(pre) + suf[i]).c_str(), m[i]);
+            setNum((std::string(pre) + "k1").c_str(), k[0]);
+            setNum((std::string(pre) + "k2").c_str(), k[1]);
+            settings.save();
+            calResult(p, top ? "top_grid" : "bottom_grid", m);
+            out::num(p, PSTR("squares"), squares);
+            out::flt(p, PSTR("size"), size, 3);
+            out::flt(p, PSTR("k1"), k[0], 5);
+            out::flt(p, PSTR("k2"), k[1], 5);
+            out::flt(p, PSTR("rms_px_before"), rmsLin, 3);
+            out::flt(p, PSTR("rms_px_after"), rmsLens, 3);
+            out::flt(p, PSTR("rms_mm_after"), rmsLens * mmPerPx(m), 4);
+            if (top)
+                out::flt(p, PSTR("move_scale"), moveScale, 4); // head moves / printed squares, 1 = steps/mm right
+            p.println();
+            out::ok(p);
+            return;
+        }
+        if (args.is(2, PSTR("LENS")))
+        {
+            const char *pre = top ? "cam_top_" : "cam_bottom_";
+            float m[4], k[2], rmsLin, rmsLens;
+            if (!top)
+                octoOk("LIGHT bottom ON", err); // the tip has to stand out
+            const bool ok = lensCal(cam, top ? -1.0f : 1.0f, m, k, rmsLin, rmsLens, err);
+            if (!top)
+                octoOk("LIGHT bottom 0", err);
+            if (!ok)
+            {
+                out::error2(p, PSTR("lens calibration failed:"), err.c_str());
+                return;
+            }
+            const char *suf[4] = {"m00", "m01", "m10", "m11"};
+            for (int i = 0; i < 4; i++)
+                setNum((std::string(pre) + suf[i]).c_str(), m[i]);
+            setNum((std::string(pre) + "k1").c_str(), k[0]);
+            setNum((std::string(pre) + "k2").c_str(), k[1]);
+            settings.save();
+            calResult(p, top ? "top_lens" : "bottom_lens", m);
+            out::flt(p, PSTR("k1"), k[0], 5);
+            out::flt(p, PSTR("k2"), k[1], 5);
+            out::flt(p, PSTR("rms_px_before"), rmsLin, 3);
+            out::flt(p, PSTR("rms_px_after"), rmsLens, 3);
+            out::flt(p, PSTR("rms_mm_after"), rmsLens * mmPerPx(m), 4);
+            p.println();
+            out::ok(p);
             return;
         }
         float m[4];
@@ -459,6 +825,101 @@ void cmdCal(Port &port, Args &args)
         return;
     }
 
+    // CAL HEADS NOZZLE | PASTE [CAM] | CAMERA [MANUAL]: one reference point for nozzle, paste tip and top
+    // camera. Reference: a mark on the bed (tips put on it by eye), or with CAM the bottom camera (it finds
+    // the tip; the reference is then the point on its optical axis).
+    //   NOZZLE [CAM]   nozzle tip on the mark / over the bottom camera -> reference N
+    //   PASTE [CAM]    paste tip on the mark / over the bottom camera  -> head1_offset = N (+ tip in picture) - head
+    //   CAMERA         top camera above the mark / bottom camera lens, finds it -> cam_top_off = N - mark in picture - head
+    //   CAMERA MANUAL  mark centred on the cross by eye
+    // A reference from the bottom camera also becomes the visual homing reference (vhome_ref_x / _y).
+    if (args.is(1, PSTR("HEADS")))
+    {
+        static float nX = NAN, nY = NAN;
+        static bool nFromCam = false;
+        float hx = 0, hy = 0;
+        if (!headPosition(hx, hy))
+        {
+            out::error(p, PSTR("no position from the motion board"));
+            return;
+        }
+        auto result = [&](const char *what, float x, float y) {
+            out::rec(p, PSTR("cal"));
+            out::str(p, PSTR("what"), what);
+            out::flt(p, PSTR("x"), x, 3);
+            out::flt(p, PSTR("y"), y, 3);
+        };
+        const bool cam = args.is(3, PSTR("CAM"));
+        if (args.is(2, PSTR("NOZZLE")))
+        {
+            float dx = 0, dy = 0;
+            if (cam && !tipInBottomCamera(dx, dy, err))
+            {
+                out::error2(p, PSTR("nozzle tip not found:"), err.c_str());
+                return;
+            }
+            // tip = reference + d (bottom camera sees the object move) -> reference = head - d
+            nX = hx - dx, nY = hy - dy;
+            nFromCam = cam;
+            result("reference", nX, nY);
+            p.println();
+            out::ok(p);
+            return;
+        }
+        if (std::isnan(nX))
+        {
+            out::error(p, PSTR("first the nozzle: CAL HEADS NOZZLE [CAM]"));
+            return;
+        }
+        if (args.is(2, PSTR("PASTE")))
+        {
+            float dx = 0, dy = 0;
+            if (cam && !tipInBottomCamera(dx, dy, err))
+            {
+                out::error2(p, PSTR("paste tip not found:"), err.c_str());
+                return;
+            }
+            // paste tip = head + offset = reference + d -> offset = reference + d - head
+            setNum("head1_offset_x", nX + dx - hx);
+            setNum("head1_offset_y", nY + dy - hy);
+            settings.save();
+            result("paste_offset", settings.head1Offset[0], settings.head1Offset[1]);
+            p.println();
+            out::ok(p);
+            return;
+        }
+        if (args.is(2, PSTR("CAMERA")))
+        {
+            float dx = 0, dy = 0; // mark position in the top picture, mm from the centre
+            if (!args.is(3, PSTR("MANUAL")))
+            {
+                if (!markInTopCamera(dx, dy, err))
+                {
+                    out::error2(p, PSTR("mark not found (centre it on the cross and use MANUAL):"), err.c_str());
+                    return;
+                }
+                headPosition(hx, hy);
+            }
+            // mark = camera centre + d, camera centre = head + offset, mark = N -> offset = N - d - head
+            setNum("cam_top_off_x", nX - dx - hx);
+            setNum("cam_top_off_y", nY - dy - hy);
+            const bool ref = nFromCam && !args.is(3, PSTR("MANUAL"));
+            if (ref)
+            {
+                setNum("vhome_ref_x", nX);
+                setNum("vhome_ref_y", nY);
+            }
+            settings.save();
+            result("top_offset", settings.camTopOffset[0], settings.camTopOffset[1]);
+            out::num(p, PSTR("vhome_ref"), ref ? 1 : 0);
+            p.println();
+            out::ok(p);
+            return;
+        }
+        out::error(p, PSTR("usage: CAL HEADS NOZZLE [CAM] | PASTE [CAM] | CAMERA [MANUAL]"));
+        return;
+    }
+
     if (args.is(1, PSTR("TOPOFFSET")))
     {
         static float markX = NAN, markY = NAN;
@@ -494,7 +955,8 @@ void cmdCal(Port &port, Args &args)
         Frame fr;
         cams.latest(vision::TOP, fr);
         float dx, dy;
-        pxToMm(settings.cam[vision::TOP].m, f.x - fr.gray.w / 2.0f, f.y - fr.gray.h / 2.0f, dx, dy);
+        camPxToMm(settings.cam[vision::TOP].m, settings.cam[vision::TOP].k, fr.gray.w, fr.gray.h, f.x, f.y, fr.gray.w / 2.0f,
+              fr.gray.h / 2.0f, dx, dy);
         // mark = camera centre + d, camera centre = nozzle + offset -> offset = mark - d - nozzle
         setNum("cam_top_off_x", markX - dx - s.pos[OX]);
         setNum("cam_top_off_y", markY - dy - s.pos[OY]);

@@ -285,18 +285,24 @@ void MenuScreen::draw(Gfx &g)
     const WifiInfo w = wifiSetup.info();
     g.background();
     g.titleBar("Menu");
-    std::vector<Row> rows(9);
+    std::vector<Row> rows(10);
     rows[0].icon = Icon::Home, rows[0].label = "Home all", rows[0].sub = "X + Y, then Z, then E1";
     rows[1].icon = Icon::Sensor, rows[1].label = "Cameras", rows[1].sub = "live picture, measure, lights", rows[1].chev = true;
     rows[2].icon = Icon::Check, rows[2].label = "Nozzles", rows[2].sub = "rack, change, names", rows[2].chev = true;
-    rows[3].icon = Icon::Gear, rows[3].label = "Calibration", rows[3].sub = "cameras, vacuum, joystick", rows[3].chev = true;
-    rows[4].icon = Icon::Pump, rows[4].label = "Pump, valve & fans", rows[4].chev = true;
-    rows[5].icon = Icon::Test, rows[5].label = "Testing", rows[5].sub = "Outputs, sensors, motors", rows[5].chev = true;
-    rows[6].icon = Icon::Gear, rows[6].label = "Settings", rows[6].chev = true;
-    rows[7].icon = Icon::Wifi, rows[7].label = "Network & website", rows[7].chev = true;
-    rows[7].value = w.state == "connected" ? "connected" : w.ssid.empty() ? "not set up" : w.state;
-    rows[7].valueColor = w.state == "connected" ? th::OK : th::WARN;
-    rows[8].icon = Icon::Power, rows[8].label = "Motors off", rows[8].sub = "releases all motors (unhomes)";
+    rows[3].icon = Icon::Check, rows[3].label = "Setup", rows[3].sub = "walks through every calibration in order", rows[3].chev = true;
+    {
+        const int st = atoi(machine.setting("setup_step", "0").c_str()), last = SetupScreen::steps() - 1;
+        rows[3].value = st >= last ? "done" : "step " + std::to_string(st + 1) + "/" + std::to_string(last);
+        rows[3].valueColor = st >= last ? th::OK : th::WARN;
+    }
+    rows[4].icon = Icon::Gear, rows[4].label = "Calibration", rows[4].sub = "each calibration on its own", rows[4].chev = true;
+    rows[5].icon = Icon::Pump, rows[5].label = "Pump, valve & fans", rows[5].chev = true;
+    rows[6].icon = Icon::Test, rows[6].label = "Testing", rows[6].sub = "Outputs, sensors, motors", rows[6].chev = true;
+    rows[7].icon = Icon::Gear, rows[7].label = "Settings", rows[7].chev = true;
+    rows[8].icon = Icon::Wifi, rows[8].label = "Network & website", rows[8].chev = true;
+    rows[8].value = w.state == "connected" ? "connected" : w.ssid.empty() ? "not set up" : w.state;
+    rows[8].valueColor = w.state == "connected" ? th::OK : th::WARN;
+    rows[9].icon = Icon::Power, rows[9].label = "Motors off", rows[9].sub = "releases all motors (unhomes)";
     list_.draw(g, M_ROWS, rows);
 }
 
@@ -314,21 +320,24 @@ void MenuScreen::action(uint16_t id)
         ui.push(&nozzlesScreen);
         break;
     case 3:
-        ui.push(&calibrationScreen);
+        ui.push(&setupScreen);
         break;
     case 4:
-        ui.push(&pumpScreen);
+        ui.push(&calibrationScreen);
         break;
     case 5:
-        ui.push(&testingScreen);
+        ui.push(&pumpScreen);
         break;
     case 6:
-        ui.push(&settingsScreen);
+        ui.push(&testingScreen);
         break;
     case 7:
-        ui.push(&wifiScreen);
+        ui.push(&settingsScreen);
         break;
     case 8:
+        ui.push(&wifiScreen);
+        break;
+    case 9:
         ui.send("MOTORS OFF", [](const Reply &r) {
             if (r.ok)
                 ui.toast("Motors released");
@@ -482,7 +491,9 @@ void AlarmScreen::action(uint16_t id)
         ui.send("CLEAR", [](const Reply &r) {
             if (r.ok)
             {
-                ui.goHome();
+                // Home on top of the screen you were on (it comes back after homing), not on the home screen
+                if (ui.top() == &alarmScreen)
+                    ui.pop();
                 homingScreen.start();
             }
         });

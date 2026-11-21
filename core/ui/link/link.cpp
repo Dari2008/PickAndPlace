@@ -42,7 +42,7 @@ uint32_t Link::defaultTimeout(const std::string &line)
     if (starts("HOME") || starts("FINDLEN"))
         return 330000;
     if (starts("CAL") || starts("SGTEST"))
-        return 120000;
+        return 180000; // a lens calibration takes 9 pictures
     if (starts("RUN") || starts("CHECK") || starts("LS") || starts("FEEDERS") || starts("CAT") || starts("SD"))
         return 30000;
     if (starts("WAIT"))

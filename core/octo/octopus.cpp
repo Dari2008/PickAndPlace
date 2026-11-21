@@ -203,6 +203,21 @@ uint64_t Octopus::send(const std::string &line, int timeoutMs)
     return r->id;
 }
 
+void Octopus::post(const std::string &line, int timeoutMs)
+{
+    {
+        std::lock_guard<std::mutex> l(m_);
+        if (!open_)
+            return;
+        auto r = std::make_shared<Request>();
+        r->id = nextId_++; // not in byId_: finishHead() just drops it
+        r->line = line;
+        r->timeoutMs = timeoutMs > 0 ? timeoutMs : defaultTimeout(line);
+        queue_.push_back(r);
+    }
+    cv_.notify_all();
+}
+
 void Octopus::urgent(const std::string &line)
 {
     std::lock_guard<std::mutex> l(m_);
@@ -222,6 +237,7 @@ void Octopus::urgent(const std::string &line)
     // still come back in queue order.
     r->sent = true;
     r->sentMs = millis();
+    lastTx_ = r->sentMs;
     queue_.insert(queue_.begin() + 1, r);
     tx_->write(line);
 }
@@ -278,6 +294,7 @@ void Octopus::pump()
     auto r = queue_.front();
     r->sent = true;
     r->sentMs = millis();
+    lastTx_ = r->sentMs;
     if (!tx_->write(r->line))
         finishHead(false, "write failed", false, true);
 }
@@ -357,6 +374,15 @@ void Octopus::run()
         }
         {
             std::lock_guard<std::mutex> l(m_);
+            // Keep-alive: nothing written for a while and nothing waiting -> PING (nobody waits for it)
+            if (queue_.empty() && millis() - lastTx_ > KEEPALIVE_MS)
+            {
+                auto r = std::make_shared<Request>();
+                r->id = nextId_++;
+                r->line = "PING";
+                r->timeoutMs = 2000;
+                queue_.push_back(r);
+            }
             pump();
             // Timeout of the request on the wire
             if (!queue_.empty() && queue_.front()->sent &&

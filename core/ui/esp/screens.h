@@ -395,6 +395,70 @@ private:
     ListView list_;
 };
 
+// Calibration -> Positions: the machine positions in the settings (bottom camera, load cell pad, nozzle
+// slots, drop point). Pick one, jog there with the joystick, save the head position as that position.
+struct TeachPos
+{
+    const char *key;   // settings prefix: <key>_x / <key>_y
+    const char *label;
+    const char *what;  // what has to be where
+};
+class PositionsScreen : public Screen
+{
+public:
+    void enter() override { list_.reset(); }
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    void drag(int dy) override { list_.dragBy(dy); }
+
+private:
+    ListView list_;
+};
+
+class TeachPosScreen : public Screen
+{
+public:
+    void open(const TeachPos &p);
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    uint8_t liveRects(Rect *r) const override
+    {
+        r[0] = {16, 72, 288, 30}; // head position
+        return 1;
+    }
+    void tick() override { stickJog(-1); }
+    bool usesStick() const override { return true; }
+
+private:
+    TeachPos pos_{};
+    bool busy_ = false;
+};
+
+// Calibration -> Head offsets: one mark, three steps (CAL HEADS): nozzle tip on it, paste tip on it,
+// top camera above it -> head1_offset (paste tip) and cam_top_off (camera) relative to the nozzle.
+class HeadOffsetsScreen : public Screen
+{
+public:
+    void enter() override { step_ = 0, busy_ = false, result_.clear(); }
+    void draw(Gfx &g) override;
+    void action(uint16_t id) override;
+    uint8_t liveRects(Rect *r) const override
+    {
+        r[0] = {16, 60, 288, 24}; // head position
+        return 1;
+    }
+    void tick() override { stickJog(-1); }
+    bool usesStick() const override { return true; }
+
+private:
+    void save(const char *cmd, int nextStep);
+    int step_ = 0; // 0 nozzle, 1 paste tip, 2 camera, 3 done
+    bool busy_ = false;
+    std::string result_;
+    float refX_ = 0, refY_ = 0; // reference from step 1 (mark or bottom camera axis)
+    bool haveRef_ = false, camRef_ = false;
+};
+
 // Every sensor, live: switches, sensorless stall signals, vacuum, nozzle slots, joystick, cameras
 class SensorsScreen : public Screen
 {
@@ -620,6 +684,9 @@ extern MotorTestScreen motorTestScreen;
 extern HomeAxesScreen homeAxesScreen;
 extern SgCalScreen sgCalScreen;
 extern FindLengthScreen findLengthScreen;
+extern PositionsScreen positionsScreen;
+extern TeachPosScreen teachPosScreen;
+extern HeadOffsetsScreen headOffsetsScreen;
 extern TouchCalScreen touchCalScreen;
 extern TouchSettingsScreen touchSettingsScreen;
 extern TouchTestScreen touchTestScreen;

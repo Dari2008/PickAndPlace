@@ -33,20 +33,160 @@ static bool forwardMoving(Port &port)
 
 float nozzleAngle() { return octo.status().pos[OROT]; }
 
-void cmdHome(Port &port, Args &)
+// HOME as on the board. With visual homing on (vhome) and X + Y homed, the top camera then finds the
+// bottom camera and corrects X / Y: "vhome dx= dy=" before the ok, or an error.
+void cmdHome(Port &port, Args &args)
 {
     if (commands::refuseIfBusy(port))
         return;
-    forward(port, commands::currentLine(), 300000);
+    const OctoReply r = octo.call(commands::currentLine(), 300000);
+    for (const Record &rec : r.records)
+        port.io.println(rec.text.c_str());
     delay(120);
     motion.syncTargets();
+    if (!r.ok)
+    {
+        out::error(port.io, r.error.empty() ? "motion board offline" : r.error.c_str());
+        return;
+    }
+    // X and Y both homed by this command: no axis words, or XY / ALL, or X and Y
+    bool x = args.count() < 2, y = x;
+    for (uint8_t i = 1; i < args.count(); i++)
+    {
+        x |= args.is(i, "X") || args.is(i, "XY") || args.is(i, "ALL");
+        y |= args.is(i, "Y") || args.is(i, "XY") || args.is(i, "ALL");
+    }
+    if (x && y && settings.vhome)
+    {
+        float dx, dy;
+        std::string err;
+        if (!commands::visualHome(dx, dy, err))
+        {
+            out::error2(port.io, "visual homing:", err.c_str());
+            return;
+        }
+        char line[64];
+        snprintf(line, sizeof(line), "vhome dx=%.3f dy=%.3f", dx, dy);
+        port.io.println(line);
+    }
+    out::ok(port.io);
 }
 
-void cmdMove(Port &port, Args &) { forwardMoving(port); }
-void cmdJog(Port &port, Args &) { forwardMoving(port); }
-// JOGV x= y= z= e1= (mm/s): velocity jog of the joystick, stops on JOGV 0 or 300 ms without a JOGV
-void cmdJogV(Port &port, Args &) { forwardMoving(port); }
-void cmdE1(Port &port, Args &) { forwardMoving(port); }
+// ---- crash guard -------------------------------------------------------------------------------
+// Besides the board's own soft limits (and in case its firmware is older): once X + Y are homed, a MOVE
+// outside 0 .. travel_x / _y is refused and a JOG is shortened to the edge (refused when it can't move at
+// all); the same for E1 once the gantry is homed. Homing, SGTEST and FINDLEN go to the ends on purpose.
+static bool limitFor(int axis, float &mx)
+{
+    const OctoStatus s = octo.status();
+    if (!s.valid)
+        return false;
+    if ((axis == OX || axis == OY) && s.homed)
+        mx = octo.valueNum(axis == OX ? "travel_x" : "travel_y", 0);
+    else if (axis == OE1 && s.e1Homed)
+        mx = octo.valueNum("travel_e1", 0);
+    else
+        return false;
+    return mx > 0;
+}
+
+// The line with targets kept inside the limits, or false + err
+static bool guardLine(Args &args, bool relative, std::string &line, std::string &err)
+{
+    static const struct
+    {
+        const char *key;
+        int axis;
+        const char *name;
+    } AX[] = {{"x", OX, "X"}, {"y", OY, "Y"}, {"e1", OE1, "E1"}};
+    const OctoStatus s = octo.status();
+    line = args[0];
+    bool moves = false, anyAxis = false;
+    for (uint8_t i = 1; i < args.count(); i++)
+    {
+        std::string w = args[i];
+        const size_t eq = w.find('=');
+        for (const auto &a : AX)
+        {
+            float mx;
+            if (eq == std::string::npos || strcasecmp(w.substr(0, eq).c_str(), a.key) != 0)
+                continue;
+            anyAxis = true;
+            const float v = (float)atof(w.c_str() + eq + 1), from = s.pos[a.axis], to = relative ? from + v : v;
+            if (!limitFor(a.axis, mx))
+            {
+                moves = true;
+                break;
+            }
+            char t[96];
+            if (to >= -0.001f && to <= mx + 0.001f)
+            {
+                moves = moves || fabsf(to - from) > 0.0005f;
+                break;
+            }
+            if (!relative)
+            {
+                snprintf(t, sizeof(t), "%s=%.2f would crash: outside 0 .. %.1f (travel_%s)", a.name, (double)to, (double)mx, a.key);
+                err = t;
+                return false;
+            }
+            const float edge = to < 0 ? 0 : mx, nv = edge - from;
+            if (fabsf(nv) > 0.0005f)
+                moves = true;
+            snprintf(t, sizeof(t), "%s=%.4f", a.key, (double)nv);
+            w = t;
+            break;
+        }
+        line += " " + w;
+    }
+    if (relative && anyAxis && !moves)
+    {
+        err = "at the end of travel: it would crash (soft limit)";
+        return false;
+    }
+    return true;
+}
+
+static void forwardGuarded(Port &port, Args &args, bool relative)
+{
+    if (commands::refuseIfBusy(port))
+        return;
+    std::string line, err;
+    if (!guardLine(args, relative, line, err))
+    {
+        out::error(port.io, err.c_str());
+        return;
+    }
+    forward(port, line);
+    motion.invalidateTargets();
+}
+
+void cmdMove(Port &port, Args &args) { forwardGuarded(port, args, false); }
+void cmdJog(Port &port, Args &args) { forwardGuarded(port, args, true); }
+// JOGV x= y= z= e1= (mm/s): velocity jog of the joystick, stops on JOGV 0 or 500 ms without a JOGV.
+// Answered at once and passed on without waiting: a blocked command loop must not leave gaps in the
+// stream (the board would stop and start again).
+void cmdJogV(Port &port, Args &)
+{
+    if (commands::refuseIfBusy(port))
+        return;
+    octo.post(commands::currentLine());
+    motion.invalidateTargets();
+    out::ok(port.io);
+}
+void cmdE1(Port &port, Args &args)
+{
+    // E1 <mm> absolute (other forms passed on as they are)
+    float v, mx;
+    if (args.count() >= 2 && Args::number(args[1], v) && limitFor(OE1, mx) && (v < -0.001f || v > mx + 0.001f))
+    {
+        char t[96];
+        snprintf(t, sizeof(t), "E1=%.2f would crash: outside 0 .. %.1f (travel_e1)", (double)v, (double)mx);
+        out::error(port.io, t);
+        return;
+    }
+    forwardMoving(port);
+}
 void cmdE0(Port &port, Args &) { forwardMoving(port); }
 void cmdMotor(Port &port, Args &) { forwardMoving(port); }
 void cmdPaste(Port &port, Args &) { forwardMoving(port); }

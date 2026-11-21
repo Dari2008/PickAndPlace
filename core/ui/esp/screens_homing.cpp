@@ -9,6 +9,9 @@
 HomeAxesScreen homeAxesScreen;
 SgCalScreen sgCalScreen;
 FindLengthScreen findLengthScreen;
+PositionsScreen positionsScreen;
+TeachPosScreen teachPosScreen;
+HeadOffsetsScreen headOffsetsScreen;
 
 namespace commands
 {
@@ -485,5 +488,255 @@ void FindLengthScreen::action(uint16_t id)
         });
         break;
     }
+    }
+}
+
+// ---------------------------------------------------------------- Calibration -> Positions
+
+static const TeachPos TEACH_POS[] = {
+    {"cam_bottom", "Bottom camera", "nozzle tip centred over the bottom camera"},
+    {"loadcell", "Load cell pad", "vacuum nozzle over the middle of the pad"},
+    {"nozzle_first", "Nozzle slot 1", "nozzle centred over the first slot"},
+    {"nozzle_last", "Last nozzle slot", "nozzle centred over the last slot"},
+    {"reject", "Drop point", "where skipped parts are dropped"},
+};
+static const size_t N_TEACH = sizeof(TEACH_POS) / sizeof(TEACH_POS[0]);
+
+enum
+{
+    PS_ROWS = 10,
+    TP_GO = 1,
+    TP_SAVE,
+    TP_HOME
+};
+
+static std::string posText(const TeachPos &p)
+{
+    const std::string x = machine.setting((std::string(p.key) + "_x").c_str(), "-");
+    const std::string y = machine.setting((std::string(p.key) + "_y").c_str(), "-");
+    return x + " / " + y;
+}
+
+void PositionsScreen::draw(Gfx &g)
+{
+    g.background();
+    g.titleBar("Positions");
+    std::vector<Row> rows(N_TEACH);
+    for (size_t i = 0; i < N_TEACH; i++)
+    {
+        rows[i].icon = Icon::Move, rows[i].label = TEACH_POS[i].label, rows[i].value = posText(TEACH_POS[i]);
+        rows[i].sub = TEACH_POS[i].what, rows[i].chev = true;
+    }
+    list_.draw(g, PS_ROWS, rows, 25, 35);
+    g.hint("pick one, jog there with the joystick, save");
+}
+
+void PositionsScreen::action(uint16_t id)
+{
+    if (id >= PS_ROWS && id < PS_ROWS + N_TEACH)
+        teachPosScreen.open(TEACH_POS[id - PS_ROWS]);
+}
+
+void TeachPosScreen::open(const TeachPos &p)
+{
+    pos_ = p;
+    busy_ = false;
+    ui.push(this);
+}
+
+void TeachPosScreen::draw(Gfx &g)
+{
+    g.background();
+    g.titleBar(pos_.label);
+    const MachineStatus st = machine.status();
+    g.card(16, 32, 288, 72);
+    g.text(g.fit(pos_.what, Font::Small, 270), 28, 46, Font::Small, th::DIM);
+    char t[64];
+    snprintf(t, sizeof(t), "head  X %.2f   Y %.2f", (double)st.x, (double)st.y);
+    g.text(t, 28, 74, Font::Title, th::ACCENT);
+    g.text(("saved  " + posText(pos_)).c_str(), 28, 96, Font::Small, th::DIM);
+    if (!st.homed)
+    {
+        // Positions only mean something from home
+        g.text("Not homed: home X + Y first", 160, 124, Font::Body, th::WARN, Align::Center);
+        g.button(TP_HOME, busy_ ? "Homing ..." : "Home X + Y", 60, 146, 200, 44, Kind::Primary, Icon::Home);
+        g.hint("then jog there with the joystick");
+        return;
+    }
+    g.button(TP_GO, "Go to saved", 16, 120, 140, 44, Kind::Normal, Icon::Move);
+    g.button(TP_SAVE, "Save here", 164, 120, 140, 44, Kind::Primary, Icon::Check);
+    g.hint("joystick: move the head  ·  Save here stores X / Y");
+}
+
+void TeachPosScreen::action(uint16_t id)
+{
+    if (busy_)
+        return;
+    const MachineStatus st = machine.status();
+    const std::string kx = std::string(pos_.key) + "_x", ky = std::string(pos_.key) + "_y";
+    char line[96];
+    switch (id)
+    {
+    case TP_HOME:
+        busy_ = true;
+        ui.send("HOME XY", [this](const Reply &r) {
+            busy_ = false;
+            if (r.ok)
+                ui.toast("Homed", th::OK);
+            ui.redraw();
+        });
+        ui.redraw();
+        break;
+    case TP_GO:
+    {
+        const float x = (float)atof(machine.setting(kx.c_str(), "-1").c_str());
+        const float y = (float)atof(machine.setting(ky.c_str(), "-1").c_str());
+        if (x < 0 || y < 0)
+        {
+            ui.toast("Not set yet", th::WARN);
+            break;
+        }
+        snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", x, y);
+        ui.send(line);
+        break;
+    }
+    case TP_SAVE:
+        snprintf(line, sizeof(line), "SET %s %.3f", kx.c_str(), (double)st.x);
+        ui.send(line, nullptr);
+        snprintf(line, sizeof(line), "SET %s %.3f", ky.c_str(), (double)st.y);
+        ui.send(line, [this](const Reply &r) {
+            machine.refreshSettings();
+            if (r.ok)
+                ui.toast(std::string(pos_.label) + " saved", th::OK);
+        });
+        break;
+    }
+}
+
+// ---------------------------------------------------------------- Calibration -> Head offsets
+
+enum
+{
+    HO_SAVE = 1, // by eye: tip on the mark / mark on the cross
+    HO_FIND,     // camera: bottom camera finds the tip, top camera finds the lens
+    HO_GOTO,     // move over the bottom camera
+    HO_ZDOWN,
+    HO_ZUP,
+    HO_BACK,
+    HO_VHOME
+};
+
+static const char *const HO_TITLE[] = {"1/3  Nozzle", "2/3  Paste tip", "3/3  Top camera", "Done"};
+static const char *const HO_WHAT[] = {
+    "over the bottom camera: Find tip  -  or on a mark: Save by eye",
+    "same way: over the bottom camera (Z: paste side down) or on the mark",
+    "above the bottom camera lens: Find lens  -  or mark on the cross",
+    "paste tip and top camera are now relative to the nozzle"};
+
+void HeadOffsetsScreen::draw(Gfx &g)
+{
+    g.background();
+    g.titleBar("Head offsets");
+    const MachineStatus st = machine.status();
+    g.card(16, 30, 288, 80);
+    g.text(HO_TITLE[step_], 28, 44, Font::BodyBold, th::TEXT);
+    char t[64];
+    snprintf(t, sizeof(t), "head  X %.2f   Y %.2f   Z %.1f", (double)st.x, (double)st.y, (double)st.z);
+    g.text(t, 28, 72, Font::Body, th::ACCENT);
+    g.text(g.fit(result_.empty() ? HO_WHAT[step_] : result_, Font::Small, 270), 28, 96, Font::Small, th::DIM);
+    if (step_ >= 3)
+    {
+        const bool on = machine.setting("vhome", "0") == "1";
+        g.button(HO_VHOME, on ? "Visual homing: ON" : "Visual homing: off", 16, 122, 288, 40, on ? Kind::Primary : Kind::Normal,
+                 Icon::Home);
+        g.button(HO_BACK, "Again from step 1", 16, 170, 288, 40, Kind::Normal, Icon::Refresh);
+        g.hint(camRef_ ? "reference for visual homing saved" : "visual homing needs the bottom camera way");
+        return;
+    }
+    g.button(HO_ZDOWN, "Z -1", 16, 120, 60, 40);
+    g.button(HO_ZUP, "Z +1", 82, 120, 60, 40);
+    g.button(HO_GOTO, "Go to camera", 148, 120, 156, 40, Kind::Normal, Icon::Move);
+    g.button(HO_FIND, busy_ ? "..." : step_ == 2 ? "Find lens" : "Find tip", 16, 168, 140, 44, Kind::Primary, Icon::Sensor);
+    g.button(HO_SAVE, busy_ ? "..." : "Save by eye", 164, 168, 140, 44, Kind::Normal, Icon::Check);
+    g.hint("joystick: move X / Y");
+}
+
+void HeadOffsetsScreen::save(const char *cmd, int nextStep)
+{
+    busy_ = true;
+    ui.send(cmd, [this, nextStep](const Reply &r) {
+        busy_ = false;
+        if (r.ok && !r.records.empty())
+        {
+            const Record &rec = r.records[0];
+            char t[80];
+            if (nextStep == 1)
+            {
+                refX_ = (float)atof(rec.str("x").c_str()), refY_ = (float)atof(rec.str("y").c_str());
+                haveRef_ = true;
+                snprintf(t, sizeof(t), "reference %s / %s mm", rec.str("x").c_str(), rec.str("y").c_str());
+            }
+            else
+            {
+                snprintf(t, sizeof(t), "%s  %s / %s mm", nextStep == 2 ? "paste offset" : "camera offset", rec.str("x").c_str(),
+                         rec.str("y").c_str());
+                if (nextStep == 3)
+                    camRef_ = rec.integer("vhome_ref", 0) != 0;
+            }
+            result_ = t;
+            step_ = nextStep;
+        }
+        machine.refreshSettings();
+        ui.redraw();
+    });
+    ui.redraw();
+}
+
+void HeadOffsetsScreen::action(uint16_t id)
+{
+    if (busy_)
+        return;
+    char line[96];
+    switch (id)
+    {
+    case HO_ZDOWN:
+    case HO_ZUP:
+        ui.send(id == HO_ZDOWN ? "JOG z=-1" : "JOG z=1");
+        break;
+    case HO_GOTO:
+    {
+        // 1: nozzle over the camera (its calibrated position); 2: paste tip over it (reference - paste
+        // offset so far); 3: top camera over it (reference - camera offset so far)
+        auto num = [](const char *k) { return (float)atof(machine.setting(k, "0").c_str()); };
+        if (step_ == 0)
+            snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", num("cam_bottom_x"), num("cam_bottom_y"));
+        else if (!haveRef_)
+        {
+            ui.toast("Do step 1 first", th::WARN);
+            break;
+        }
+        else if (step_ == 1)
+            snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", refX_ - num("head1_offset_x"), refY_ - num("head1_offset_y"));
+        else
+            snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", refX_ - num("cam_top_off_x"), refY_ - num("cam_top_off_y"));
+        ui.send(line);
+        break;
+    }
+    case HO_FIND:
+        save(step_ == 0 ? "CAL HEADS NOZZLE CAM" : step_ == 1 ? "CAL HEADS PASTE CAM" : "CAL HEADS CAMERA", step_ + 1);
+        break;
+    case HO_SAVE:
+        save(step_ == 0 ? "CAL HEADS NOZZLE" : step_ == 1 ? "CAL HEADS PASTE" : "CAL HEADS CAMERA MANUAL", step_ + 1);
+        break;
+    case HO_BACK:
+        step_ = 0;
+        result_.clear();
+        break;
+    case HO_VHOME:
+        ui.send(machine.setting("vhome", "0") == "1" ? "SET vhome 0" : "SET vhome 1", [](const Reply &) {
+            machine.refreshSettings();
+            ui.redraw();
+        });
+        break;
     }
 }

@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkerboard</title>
+<style>
+@page { size: A4; margin: 0 }
+body { margin: 0; font-family: Arial, sans-serif; background: #fff; color: #000 }
+.bar { padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #ccc }
+.bar input { width: 70px; padding: 4px }
+#page svg { display: block; width: 210mm; height: 297mm; max-width: 100%; height: auto }
+@media print { .bar { display: none } #page svg { width: 210mm; height: 297mm; max-width: none } }
+</style></head><body>
+<!-- Printable checkerboard for CAL TOP GRID / BOTTOM GRID; drawing from tools/checkerboard.cjs -->
+<div class="bar">Square size <input id="size" type="number" min="0.5" max="20" step="0.5" value="2"> mm
+<button id="print">Print (100 %, no fit to page)</button>
+<span>Then set <b>cal_grid</b> to the same size.</span></div>
+<div id="page"></div>
+<script>
+function checkerboardSvg(size) {
+  const pageW = 210, pageH = 297, area = 150; // board about 150 x 150 mm
+  const n = Math.max(4, Math.floor(area / size));
+  const board = n * size, x0 = (pageW - board) / 2, y0 = 40;
+  const r = (v) => +v.toFixed(4);
+  let sq = '';
+  for (let j = 0; j < n; j++)
+    for (let i = 0; i < n; i++)
+      if ((i + j) % 2 === 0) sq += `M${r(x0 + i * size)} ${r(y0 + j * size)}h${r(size)}v${r(size)}h${r(-size)}z`;
+  const by = y0 + board + 15; // 50 mm check bar
+  let ticks = '';
+  for (let t = 0; t <= 50; t += 10) ticks += `<line x1="${30 + t}" y1="${by - 2}" x2="${30 + t}" y2="${by + 6}" stroke="#000" stroke-width="0.3"/>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${pageW}mm" height="${pageH}mm" viewBox="0 0 ${pageW} ${pageH}">
+<rect width="${pageW}" height="${pageH}" fill="#fff"/>
+<text x="${pageW / 2}" y="16" font-family="Arial, sans-serif" font-size="6" text-anchor="middle">Camera calibration checkerboard - ${size} mm squares</text>
+<text x="${pageW / 2}" y="25" font-family="Arial, sans-serif" font-size="3.6" text-anchor="middle">Print at 100 % (no fit to page), matte paper. Measure the bar below: it must be 50 mm.</text>
+<text x="${pageW / 2}" y="31" font-family="Arial, sans-serif" font-size="3.6" text-anchor="middle">Setting cal_grid = ${size}  ·  Calibration &gt; Top / Bottom camera &gt; Checkerboard</text>
+<path d="${sq}" fill="#000"/>
+<rect x="${r(x0)}" y="${y0}" width="${r(board)}" height="${r(board)}" fill="none" stroke="#000" stroke-width="0.1"/>
+<line x1="30" y1="${by + 2}" x2="80" y2="${by + 2}" stroke="#000" stroke-width="0.6"/>${ticks}
+<text x="85" y="${by + 4}" font-family="Arial, sans-serif" font-size="4">50 mm</text>
+</svg>
+`;
+}
+const size = document.getElementById("size");
+const q = parseFloat(new URLSearchParams(location.search).get("size"));
+if (q > 0) size.value = q;
+const draw = () => { const s = parseFloat(size.value); if (s > 0) document.getElementById("page").innerHTML = checkerboardSvg(s).replace(/^<\?xml[^>]*>/, ""); };
+size.addEventListener("input", draw);
+document.getElementById("print").addEventListener("click", () => window.print());
+draw();
+</script>
+</body></html>

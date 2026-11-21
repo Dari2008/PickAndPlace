@@ -38,6 +38,10 @@ namespace commands
     // run normally afterwards.
     void urgentLine(const std::string &line);
 
+    // Visual homing (cmd_vision.cpp): top camera over the bottom camera lens, measure, SETPOS X / Y.
+    // dx / dy = correction applied (mm). False + err when off, not set up or not found.
+    bool visualHome(float &dx, float &dy, std::string &err);
+
     // The command line being executed, as it came in (for passing it on to the Octopus)
     const std::string &currentLine();
     // Resolve a path argument against the port's working folder into `out`

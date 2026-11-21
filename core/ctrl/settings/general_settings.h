@@ -15,7 +15,7 @@
  *            cam_top_off_x/_y (camera centre minus nozzle, mm), cam_bottom_invert, cam_settle_ms
  * Vision:    vision_parts vision_fiducials vision_pockets vision_place_check vision_required
  *            vision_max_offset vision_max_angle fid_diameter fid_search pocket_search
- *            light_top light_bottom cal_step backlight
+ *            light_top light_bottom cal_step cal_grid setup_step backlight
  * Nozzles:   nozzle_count nozzle_first_x/_y nozzle_last_x/_y nozzle_z_pick nozzle_z_drop nozzle_z_safe
  *            nozzle_slide_x/_y nozzle_speed nozzle_wait_ms nozzle_sensor_invert nozzle_check (see ../nozzles.h)
  *            nozzle_touchoff
@@ -48,6 +48,7 @@ struct CamSettings
     float exposure;  // -1 = auto
     float thresh;    // -1 = Otsu
     float m[4];      // px -> mm: [m00 m01; m10 m11] (scale, rotation, skew)
+    float k[2];      // lens distortion k1 / k2 (vision/detect.h undistortPx), 0 = none
 };
 
 class GeneralSettings
@@ -97,6 +98,12 @@ public:
     float fidDiameter, fidSearch, pocketSearch;
     uint8_t lightTop, lightBottom; // %
     float calStep;                 // mm moved during a camera calibration
+    float calGrid;                 // square size of the printed checkerboard, mm
+    uint8_t setupStep;             // Menu > Setup: the step reached
+    // Visual homing: after HOME X/Y the top camera finds the bottom camera lens and corrects X/Y
+    uint8_t vhome;                 // on / off
+    float vhomeRef[2];             // lens position in machine mm (Calibration > Head offsets), -1 = not set
+    float vhomeMax;                // mm: a larger correction fails (wrong thing found?)
     uint8_t backlight;             // %
 
     // ---- nozzle changer (../nozzles.h) ------------------------------------------------------

@@ -7,6 +7,7 @@
 
 CamerasScreen camerasScreen;
 CalibrationScreen calibrationScreen;
+CamCalScreen camCalScreen;
 VacuumScreen vacuumScreen;
 JoystickScreen joystickScreen;
 
@@ -221,36 +222,53 @@ void CalibrationScreen::draw(Gfx &g)
 {
     g.background();
     g.titleBar("Calibration");
-    std::vector<Row> rows(12);
-    rows[0].icon = Icon::Sensor, rows[0].label = "Bottom camera", rows[0].sub = "mm/px · nozzle tip over the camera";
-    rows[0].value = fmtSetting("cam_bottom_m00", "%.4f");
-    rows[1].icon = Icon::Sensor, rows[1].label = "Top camera", rows[1].sub = "mm/px · camera centred above a mark";
-    rows[1].value = fmtSetting("cam_top_m00", "%.4f");
-    rows[2].icon = Icon::Move, rows[2].label = "Top camera offset 1/2", rows[2].sub = "nozzle tip exactly on a mark";
-    rows[3].icon = Icon::Move, rows[3].label = "Top camera offset 2/2", rows[3].sub = "camera roughly above that mark";
-    rows[3].value = fmtSetting("cam_top_off_x", "%.2f") + " / " + fmtSetting("cam_top_off_y", "%.2f");
-    rows[4].icon = Icon::Refresh, rows[4].label = "Rotation direction", rows[4].sub = "part on the nozzle over the bottom camera";
-    rows[4].value = fmtSetting("cam_bottom_rot_sign", "%+.0f");
-    rows[5].icon = Icon::Pump, rows[5].label = "Vacuum sensor", rows[5].sub = "baseline, pick threshold", rows[5].chev = true;
-    rows[6].icon = Icon::Move, rows[6].label = "Joystick", rows[6].sub = "centre, range, test", rows[6].chev = true;
-    rows[7].icon = Icon::Sensor, rows[7].label = "Cameras", rows[7].sub = "live picture, lights", rows[7].chev = true;
-    rows[8].icon = Icon::Move, rows[8].label = "Move / teach", rows[8].sub = "jog the head with the stick", rows[8].chev = true;
-    rows[9].icon = Icon::Gear, rows[9].label = "All values", rows[9].sub = "cam_*, vac_*, joy_*, vision_* in Settings";
-    rows[10].icon = Icon::Sensor, rows[10].label = "Nozzle sensor order", rows[10].sub = "trigger the slots in order", rows[10].chev = true;
-    rows[11].icon = Icon::Home, rows[11].label = "Sensorless homing", rows[11].sub = "measure, set the stall threshold, test";
-    rows[11].chev = true;
+    std::vector<Row> rows(13);
+    rows[0].icon = Icon::Home, rows[0].label = "Sensorless homing", rows[0].sub = "measure, set the stall threshold, test";
+    rows[1].icon = Icon::Move, rows[1].label = "Axis length", rows[1].sub = "how far X, Y or the gantry can travel";
+    rows[2].icon = Icon::Move, rows[2].label = "Positions", rows[2].sub = "camera, load cell, nozzle slots, drop point";
+    rows[3].icon = Icon::Sensor, rows[3].label = "Bottom camera", rows[3].sub = "checkerboard, nozzle tip, lens, rotation";
+    rows[3].value = fmtSetting("cam_bottom_m00", "%.4f");
+    rows[4].icon = Icon::Sensor, rows[4].label = "Top camera", rows[4].sub = "checkerboard, mark, lens, offset";
+    rows[4].value = fmtSetting("cam_top_m00", "%.4f");
+    rows[5].icon = Icon::Test, rows[5].label = "Head offsets", rows[5].sub = "nozzle, paste tip, camera on one point";
+    rows[6].icon = Icon::Pump, rows[6].label = "Vacuum sensor", rows[6].sub = "baseline, pick threshold";
+    rows[7].icon = Icon::Move, rows[7].label = "Joystick", rows[7].sub = "centre, range, test";
+    rows[8].icon = Icon::Sensor, rows[8].label = "Nozzle sensor order", rows[8].sub = "trigger the slots in order";
+    rows[9].icon = Icon::Touch, rows[9].label = "Touch screen", rows[9].sub = "tap 4 crosses";
+    rows[10].icon = Icon::Sensor, rows[10].label = "Live cameras", rows[10].sub = "picture, lights, jog with the stick";
+    rows[11].icon = Icon::Move, rows[11].label = "Move / teach", rows[11].sub = "jog the head with the stick";
+    rows[12].icon = Icon::Gear, rows[12].label = "All values", rows[12].sub = "cam_*, vac_*, joy_*, vision_* in Settings";
+    for (int i = 0; i < 12; i++)
+        rows[i].chev = true;
     list_.draw(g, CAL_ROWS, rows);
 }
 
-void CalibrationScreen::run(const std::string &cmd, const std::string &what)
+// Runs a CAL command, then shows what was saved (lens / checkerboard: distortion and fit error)
+void calRun(const std::string &cmd, const std::string &what)
 {
     ui.toast(what + " ...", th::ACCENT);
     ui.send(cmd, [what](const Reply &r) {
         machine.refreshSettings();
         if (!r.ok)
             return; // error toast from ui.send
-        std::string res = r.records.empty() ? std::string("done") : fieldsText(r.records.back());
-        dialog.open(what, "Saved:", res.size() > 44 ? res.substr(0, 44) : res, {{"OK", Kind::Primary, nullptr}}, Icon::Check, th::OK);
+        std::string l1 = "Saved:", l2 = r.records.empty() ? std::string("done") : fieldsText(r.records.back());
+        if (!r.records.empty())
+        {
+            const Record &l = r.records.back();
+            const std::string w = l.str("what");
+            if (w.find("_lens") != std::string::npos || w.find("_grid") != std::string::npos)
+            {
+                l1 = "k1 " + l.str("k1") + " · error " + l.str("rms_px_before") + " -> " + l.str("rms_px_after") + " px";
+                l2 = l.str("mm_per_px") + " mm/px";
+                if (w.find("_grid") != std::string::npos)
+                    l2 += " · " + l.str("squares") + " squares";
+                if (l.find("move_scale"))
+                    l2 += " · moves " + l.str("move_scale");
+            }
+        }
+        if (l2.size() > 44)
+            l2 = l2.substr(0, 44);
+        dialog.open(what, l1, l2, {{"OK", Kind::Primary, nullptr}}, Icon::Check, th::OK);
     });
 }
 
@@ -259,44 +277,174 @@ void CalibrationScreen::action(uint16_t id)
     switch (id - CAL_ROWS)
     {
     case 0:
-        dialog.open("Calibrate the bottom camera?", "The head moves around the camera;", "the nozzle tip must be in the picture.",
-                    {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [this] { run("CAL BOTTOM", "Bottom camera"); }}},
-                    Icon::Sensor, th::ACCENT, 1);
+        ui.push(&sgCalScreen);
         break;
     case 1:
-        dialog.open("Calibrate the top camera?", "The head moves around the mark;", "keep the mark in the picture.",
-                    {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [this] { run("CAL TOP", "Top camera"); }}},
-                    Icon::Sensor, th::ACCENT, 1);
+        ui.push(&findLengthScreen);
         break;
     case 2:
-        run("CAL TOPOFFSET MARK", "Nozzle position");
+        ui.push(&positionsScreen);
         break;
     case 3:
-        run("CAL TOPOFFSET", "Top camera offset");
+        camCalScreen.open(0);
         break;
     case 4:
-        run("CAL ROTSIGN", "Rotation direction");
+        camCalScreen.open(1);
         break;
     case 5:
-        ui.push(&vacuumScreen);
+        ui.push(&headOffsetsScreen);
         break;
     case 6:
-        ui.push(&joystickScreen);
+        ui.push(&vacuumScreen);
         break;
     case 7:
-        camerasScreen.open(1);
+        ui.push(&joystickScreen);
         break;
     case 8:
-        ui.push(&moveScreen);
-        break;
-    case 9:
-        ui.push(&settingsScreen);
-        break;
-    case 10:
         ui.push(&nozzleLearnScreen);
         break;
+    case 9:
+        ui.push(&touchCalScreen);
+        break;
+    case 10:
+        camerasScreen.open(1);
+        break;
     case 11:
-        ui.push(&sgCalScreen);
+        ui.push(&moveScreen);
+        break;
+    case 12:
+        ui.push(&settingsScreen);
+        break;
+    }
+}
+
+// ---------------------------------------------------------------- one camera
+
+enum
+{
+    CC_ROWS = 100
+};
+
+static const float GRID_SIZES[] = {1, 1.5f, 2, 2.5f, 3, 4, 5, 10};
+
+void cycleGridSize()
+{
+    const float now = (float)atof(machine.setting("cal_grid", "2").c_str());
+    float next = GRID_SIZES[0];
+    for (float s : GRID_SIZES)
+        if (s > now + 0.01f)
+        {
+            next = s;
+            break;
+        }
+    char line[48];
+    snprintf(line, sizeof(line), "SET cal_grid %g", (double)next);
+    ui.send(line, [](const Reply &) {
+        machine.refreshSettings();
+        ui.redraw();
+    });
+}
+
+void CamCalScreen::open(int cam)
+{
+    cam_ = cam;
+    ui.push(this);
+}
+
+void CamCalScreen::draw(Gfx &g)
+{
+    const bool top = cam_ == 1;
+    g.background();
+    g.titleBar(top ? "Top camera" : "Bottom camera");
+    std::vector<Row> rows(top ? 8 : 7);
+    const std::string pre = top ? "cam_top_" : "cam_bottom_";
+    int i = 0;
+    if (!top)
+    {
+        // The checkerboard keeps the rotation of the nozzle tip calibration, so that one first
+        rows[i].icon = Icon::Sensor, rows[i].label = "1. Nozzle tip", rows[i].sub = "tip over the camera: scale, rotation, centre";
+        rows[i++].value = fmtSetting("cam_bottom_m00", "%.4f");
+        rows[i].icon = Icon::Sensor, rows[i].label = "2. Checkerboard", rows[i].sub = "printed grid over the camera: lens, scale";
+        rows[i++].value = "k1 " + fmtSetting("cam_bottom_k1", "%.3f");
+    }
+    else
+    {
+        rows[i].icon = Icon::Sensor, rows[i].label = "Checkerboard", rows[i].sub = "printed grid under the camera: lens, scale, rotation";
+        rows[i++].value = "k1 " + fmtSetting("cam_top_k1", "%.3f");
+        rows[i].icon = Icon::Sensor, rows[i].label = "On a mark", rows[i].sub = "camera centred above a mark: scale, rotation";
+        rows[i++].value = fmtSetting("cam_top_m00", "%.4f");
+    }
+    rows[i].label = "Square size", rows[i].value = fmtSetting("cal_grid", "%g") + " mm", rows[i++].sub = "of the printed checkerboard · tap: next size";
+    rows[i].icon = Icon::Sensor, rows[i].label = "Lens without checkerboard";
+    rows[i++].sub = top ? "mark at 9 places in the picture" : "nozzle tip at 9 places in the picture";
+    if (top)
+    {
+        rows[i].icon = Icon::Move, rows[i].label = "Offset 1/2", rows[i++].sub = "nozzle tip exactly on a mark";
+        rows[i].icon = Icon::Move, rows[i].label = "Offset 2/2", rows[i].sub = "camera roughly above that mark";
+        rows[i++].value = fmtSetting("cam_top_off_x", "%.2f") + " / " + fmtSetting("cam_top_off_y", "%.2f");
+    }
+    else
+    {
+        rows[i].icon = Icon::Refresh, rows[i].label = "Rotation direction", rows[i].sub = "part on the nozzle over the camera";
+        rows[i++].value = fmtSetting("cam_bottom_rot_sign", "%+.0f");
+    }
+    rows[i].icon = Icon::Sensor, rows[i].label = "Live picture", rows[i].chev = true, rows[i++].sub = "lights, jog with the stick";
+    rows[i].icon = Icon::File, rows[i].label = "Printable checkerboard", rows[i++].sub = "website: /checkerboard.html";
+    rows.resize(i);
+    list_.draw(g, CC_ROWS, rows);
+}
+
+void CamCalScreen::action(uint16_t id)
+{
+    const bool top = cam_ == 1;
+    const std::string cam = top ? "TOP" : "BOTTOM", name = top ? "Top camera" : "Bottom camera";
+    int row = id - CC_ROWS;
+    auto checkerboard = [&] {
+        dialog.open("Checkerboard?", top ? "Printed grid flat under the camera," : "Printed grid over the camera, face down,",
+                    "picture full of sharp squares.",
+                    {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [cam, name] { calRun("CAL " + cam + " GRID", name + " checkerboard"); }}},
+                    Icon::Sensor, th::ACCENT, 1);
+    };
+    auto direct = [&] {
+        if (top)
+            dialog.open("Calibrate on a mark?", "The head moves around the mark;", "keep the mark in the picture.",
+                        {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [] { calRun("CAL TOP", "Top camera"); }}},
+                        Icon::Sensor, th::ACCENT, 1);
+        else
+            dialog.open("Calibrate on the nozzle tip?", "The head moves around the camera;", "the nozzle tip must be in the picture.",
+                        {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [] { calRun("CAL BOTTOM", "Bottom camera"); }}},
+                        Icon::Sensor, th::ACCENT, 1);
+    };
+    switch (row)
+    {
+    case 0:
+        top ? checkerboard() : direct();
+        break;
+    case 1:
+        top ? direct() : checkerboard();
+        break;
+    case 2:
+        cycleGridSize();
+        break;
+    case 3:
+        dialog.open("Lens without checkerboard?", top ? "Mark in the picture centre;" : "Nozzle tip in the picture centre;",
+                    top ? "it moves the camera to 9 places." : "it moves the tip to 9 places.",
+                    {{"No", Kind::Normal, nullptr}, {"Start", Kind::Primary, [cam, name] { calRun("CAL " + cam + " LENS", name + " lens"); }}},
+                    Icon::Sensor, th::ACCENT, 1);
+        break;
+    case 4:
+        if (top)
+            calRun("CAL TOPOFFSET MARK", "Nozzle position");
+        else
+            calRun("CAL ROTSIGN", "Rotation direction");
+        break;
+    default:
+        if (top && row == 5)
+            calRun("CAL TOPOFFSET", "Top camera offset");
+        else if (row == (top ? 6 : 5))
+            camerasScreen.open(cam_);
+        else
+            ui.toast("Print it from the website: /checkerboard.html", th::ACCENT);
         break;
     }
 }

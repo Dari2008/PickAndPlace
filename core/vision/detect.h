@@ -49,3 +49,31 @@ float normalize45(float deg);
 // Calibration from two moves: delta[0] = pixel shift for machine move (step, 0), delta[1] for (0, step).
 // sign = +1: the object moved (bottom camera), -1: the camera moved (top camera).
 bool matrixFromMoves(const float dpx[2][2], float step, float sign, float m[4]);
+
+// Lens distortion (radial, about the picture centre; r normalised to the half diagonal):
+// undistorted = c + (p - c)(1 + k1 r^2 + k2 r^4). k = {0, 0}: no correction.
+void undistortPx(const float k[2], float w, float h, float &x, float &y);
+// px offset of (px, py) from (refX, refY), both undistorted, in mm (the way every measurement converts)
+void camPxToMm(const float m[4], const float k[2], float w, float h, float px, float py, float refX, float refY, float &dxMm,
+               float &dyMm);
+// From n >= 5 head moves (mm, relative) and where the mark was seen (px): matrix m (as matrixFromMoves,
+// sign +1 bottom / -1 top) and k1 / k2 together. rmsLinear / rmsLens: fit error without / with the lens
+// model, px.
+bool fitLens(const float (*moves)[2], const float (*px)[2], int n, float w, float h, float sign, float m[4], float k[2],
+             float &rmsLinear, float &rmsLens);
+
+// ---- checkerboard (square field) ----------------------------------------------------------------
+// One point per square (black and white), centre in px, indexed (i, j) on the board from the square
+// nearest the picture centre. Squares cut by the picture edge are left out.
+struct GridPt
+{
+    float x, y;
+    int i, j;
+};
+bool detectGrid(const Gray &g, std::vector<GridPt> &pts, std::string &err);
+// Lens k1 / k2 and A (undistorted px per mm, along the board axes i / j) from the squares of size mm.
+// rmsLinear / rmsLens: fit error without / with the lens model, px.
+bool fitGrid(const std::vector<GridPt> &pts, float sizeMm, float w, float h, float k[2], float A[4], float &rmsLinear,
+             float &rmsLens);
+// Rotation or mirror nearest to M (2 x 2, row major)
+void nearestOrthogonal(const float M[4], float Q[4]);

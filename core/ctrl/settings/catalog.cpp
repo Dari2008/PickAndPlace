@@ -169,6 +169,8 @@ namespace
         b.pi("fid_search", "Fiducial search radius", "mm", "");
         b.pi("pocket_search", "Pocket search radius", "mm", "");
         b.pi("cal_step", "Calibration move", "mm", "How far the head moves during a camera calibration");
+        b.pi("cal_grid", "Checkerboard square", "mm", "Square size of the printed checkerboard (camera grid calibration)");
+        b.pi("setup_step", "Setup step", "", "Where Menu > Setup continues (0 = from the start)", 0);
 
         b.group = "Bottom camera";
         b.pi("cam_bottom_dev", "Device", "", "/dev/video0 or better /dev/v4l/by-id/...");
@@ -187,6 +189,8 @@ namespace
         for (const char *m : {"m00", "m01", "m10", "m11"})
             b.pi((std::string("cam_bottom_") + m).c_str(), (std::string("Pixel > mm ") + m).c_str(), "",
                  "Scale, rotation and skew (set by the calibration)", 5);
+        b.pi("cam_bottom_k1", "Lens distortion k1", "", "Barrel < 0 < pincushion (Calibration > Bottom camera lens), 0 = none", 5);
+        b.pi("cam_bottom_k2", "Lens distortion k2", "", "", 5);
 
         b.group = "Top camera";
         b.pi("cam_top_dev", "Device", "", "/dev/video2 or better /dev/v4l/by-id/...");
@@ -201,6 +205,8 @@ namespace
         for (const char *m : {"m00", "m01", "m10", "m11"})
             b.pi((std::string("cam_top_") + m).c_str(), (std::string("Pixel > mm ") + m).c_str(), "",
                  "Scale, rotation and skew (set by the calibration)", 5);
+        b.pi("cam_top_k1", "Lens distortion k1", "", "Barrel < 0 < pincushion (Calibration > Top camera lens), 0 = none", 5);
+        b.pi("cam_top_k2", "Lens distortion k2", "", "", 5);
 
         b.group = "Lights";
         b.oc("light_top_idle", "Top light (always on)", "%", 100, 0, 100, 0, "Goes dark by itself while the bottom light is on");
@@ -230,6 +236,11 @@ namespace
         b.oc("e1_home_speed", "Gantry homing speed", "mm/s", 20, 0.1f, 500, 1, "");
         b.oc("e1_home_pulloff", "Gantry pull-off", "mm", 2, 0, 50, 1, "");
 
+        b.pi("vhome", "Visual homing", "", "After homing X / Y the top camera finds the bottom camera and corrects the position");
+        b.pi("vhome_ref_x", "Visual homing reference X", "mm", "Bottom camera lens, set by Calibration > Head offsets");
+        b.pi("vhome_ref_y", "Visual homing reference Y", "mm", "");
+        b.pi("vhome_max", "Visual homing max correction", "mm", "More: homing fails (wrong mark found?)");
+
         b.group = "Machine size & jogging";
         b.oc("travel_x", "X travel", "mm", 300, 1, 5000, 0, "Moves beyond are refused");
         b.oc("travel_y", "Y travel", "mm", 300, 1, 5000, 0, "");
@@ -258,7 +269,7 @@ namespace
                 b.oc("speed_" + ax, "Top speed", speedU.c_str(), SPEED[a], 0.001f, 100000, 1, "");
                 b.oc("accel_" + ax, "Acceleration", accU.c_str(), ACCEL[a], 0.001f, 1000000, 0, "");
             }
-            b.oc("invert_" + ax, "Reverse direction", "", follows ? 1 : 0, 0, 1, 0, follows ? "Set so both X motors push the gantry the same way" : "", nullptr, true);
+            b.oc("invert_" + ax, "Reverse direction", "", follows ? 1 : 0, 0, 1, 0, follows ? "Set so both X motors push the gantry the same way" : ax == "z" ? "Swaps the sign of Z: 1 = Z+ lowers the paste tip. Homing moves the same way as with 0 (firmware from 2026-11-21 on)" : "", nullptr, true);
             if (!follows)
                 b.oc("test_speed_" + ax, "Motor test speed", "°/s", 180, 1, 3600, 0, "Testing > Test motors (at the shaft)");
             b.oc("tmc_cur_" + ax, "Motor current", "mA", 600, 50, 2000, 0, "TMC2209 run current (RMS)");

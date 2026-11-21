@@ -92,6 +92,8 @@ public:
     // SGTEST, PROBE) is on the wire - the board polls for these while it blocks. Its answer
     // is expected right after the one on the wire and is dropped.
     void urgent(const std::string &line);
+    // Queued like send(), but nobody waits for or fetches the answer (JOGV from the joystick)
+    void post(const std::string &line, int timeoutMs = 0);
 
     OctoStatus status();
     void onEvent(std::function<void(const Record &)> fn);
@@ -140,6 +142,10 @@ private:
     std::map<std::string, std::string> values_;
     std::vector<std::function<void(const Record &)>> listeners_;
     std::atomic<uint32_t> lastRx_{0};
+    // Last line written. Nothing for KEEPALIVE_MS while idle: a PING, so the board's link watchdog
+    // (watchdog_ms) doesn't stop the pump / valve / a move while the Pi just has nothing to say.
+    uint32_t lastTx_ = 0;
+    static const uint32_t KEEPALIVE_MS = 500;
 };
 
 extern Octopus octo;
