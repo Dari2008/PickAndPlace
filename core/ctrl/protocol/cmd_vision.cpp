@@ -587,7 +587,7 @@ static bool gridPicture(int cam, const float k[2], std::vector<GridPt> &pts, flo
     if (!detectGrid(fr.gray, pts, err))
     {
         // keep what the camera saw, to look at it (website: Files)
-        const char *pic = cam == 0 ? "/captures/grid_fail_bottom.jpg" : "/captures/grid_fail_top.jpg";
+        const char *pic = cam == 0 ? "/grid_fail_bottom.jpg" : "/grid_fail_top.jpg";
         if (vision::capture((vision::Cam)cam, pic))
             err += std::string(" - picture: ") + pic;
         return false;
