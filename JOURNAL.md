@@ -6,22 +6,28 @@ created_at: "2026-11-19"
 total_time: "124h 30m"
 ---
 
-# September 23, 2026: Created a Hat for the Raspberry PI (23.09.26)
+# September 15, 2026: Choosing the Controller (15.9.26)
 
 I started by searching for a good controller for the Pick And Place machine. I considered a ESP32 S3 but that one would be too slow for the LCD screen and motor communication etc.
 In the end I chose the Raspi because its easy to programm for and has enough computational power for the object recognition for feducials and part orientation.
 
-**Total time spent: 2h 30m**
+![](hardware/wiring.png)
 
-# September 26, 2026: Picking Components and Footprints for the Hat (26.9.26)
+This is my plan of how the Raspi is wired to the display, the joystick, the sensors and the Octopus.
+
+**Total time spent: 3h 30m**
+
+# September 19, 2026: Picking Components and Footprints for the Hat (19.9.26)
 
 After settling for the Raspi I searched for components and Footprints for the Raspi-Hat for the main controller.
 ![](https://fabricate.hackclub-assets.com/ee8a8b12d653aa23250363f3ef57e7cd5dfe48eced12a30465247ae092d940ca/image-png/image.png)
 ![](https://fabricate.hackclub-assets.com/4daf311fcf6c168034d1e9fca5fd7c8183e64c0d5b28d480401a93b339bb6645/image-png/image.png)
 
-**Total time spent: 4h**
+The Hat has the ADS1115 for the joystick, a buzzer and connectors for the display, the vacuum sensor and the start / pause / stop buttons.
 
-# September 30, 2026: Routing and Ordering the Hat (30.9.26)
+**Total time spent: 3h**
+
+# September 23, 2026: Created a Hat for the Raspberry PI (23.09.26)
 
 I also placed and routed the components / wires and ordered them... Well there was a mistake because of which I had to solder the screen wires by hand instead of it beeing a cable I could take off.
 And they have arrived by now:
@@ -34,14 +40,20 @@ And they have arrived by now:
 I had to disassemble the Creality 10S to get the Alumium profiles and motors as well as the main Controller and screws.
 ![](https://fabricate.hackclub-assets.com/eb7160acacf57e095fbf5e4c69568a92ae220f72f3ce88b30b1f7148ca25cfd9/image-png/image.png)
 
+Most of the screws, the power supply and the profiles can be reused for the new machine.
 
-**Total time spent: 4h 30m**
+**Total time spent: 3h**
 
 # October 4, 2026: Choosing a new Motherboard (4.10.26)
 
+
 after disassembly I found out that the Creality motherboard doesnt have enough Connectors for 8 Nema 17 Motors and thus had to search for another Motherboard. I chose the Bigtreetech Octopus since it has a lot of interfaces and Motor controllers while also supporting the TMC2209 Stepper drivers.
 
-**Total time spent: 2h 30m**
+![](hardware/octopus-wiring.png)
+
+This is the Octopus with all the connectors I'm going to use.
+
+**Total time spent: 4h**
 
 # October 5, 2026: Create 3d Model of Main Frame (5.10.26)
 
@@ -50,20 +62,36 @@ Now I have all the lengths of the Aluminium Profiles and can finally design and 
 Its going to be 550x460mm of working area (minus a bit).
 ![](https://fabricate.hackclub-assets.com/94aa026e5a4076894b5416b2fe2c0703cecc0badef2245ccbc7667f91e43361b/image-png/image.png)
 
-**Total time spent: 6h 30m**
+**Total time spent: 4h**
+
+# October 6, 2026: Two X Motors (6.10.26)
+
+The X axis has two motors, one on each side, so the gantry can't twist and gets squared when homing. I also added corner plates and feet so the frame stands stable on the base plate.
+
+![](images/renders/main-assembly.png)
+
+This is the finished 3D model of the whole machine. I hope that is going to be all of it.
+
+**Total time spent: 4h**
 
 # October 7, 2026: Drilling and Tapping the Profiles (7.10.26)
 
 Now I have to drill a lot of holes for the screws to pass through the Profile and screw into the next one. I also had to tap a few holes which was my first time doing that.
-**Total time spent: 8h**
-
-# October 10, 2026: Assembling the Frame (10.10.26)
-
 Luckily I could reuse quite a lot of the motor mounts from the Creality 10S.
 ![](https://fabricate.hackclub-assets.com/732bfebe695b725e3c671f72c188377364c465f84388d0d160137fce67cba0f5/image-jpeg/IMG_6878.jpeg)
 ![](https://fabricate.hackclub-assets.com/fa66aebc2704287bfa14b07de0cf782db2a0a4282e539f3622522f147a218826/image-jpeg/IMG_6880.jpeg)
 
-**Total time spent: 5h 30m**
+That saved me a lot of time, since I didn't have to design and print new ones for every axis.
+
+**Total time spent: 6h**
+
+# October 11, 2026: Squaring the Frame (11.10.26)
+
+All the profiles are joined with M5 screws. I had to check a lot that everything is square, otherwise the gantry would get stuck at one end.
+
+I measured the diagonals of the frame to see if it is square before tightening all the screws.
+
+**Total time spent: 6h**
 
 # October 12, 2026: The Head / Paste extruder (12.10.26)
 
@@ -75,54 +103,71 @@ I then thought of mechanisms that could switch between two heads and watched a f
 I'm planning on 5 Nozzles which can be switched.
 ![](https://fabricate.hackclub-assets.com/6cb18c03046847540cc2194a753a04cc484b66e879f48da6e261eec97089cdef/image-png/image.png)
 
-
 **Total time spent: 4h 30m**
 
-# October 13, 2026: Cutting the Aluminium Plate (13.10.26)
+# October 14, 2026: Cutting and Drilling the Head Plate (14.10.26)
+
 
 Afterwards I searched for a Aluminium plate that would be big enough for the Z travel and the camera and motor I couldnd find a fitting one from the Creality so I had to buy a 3mm thick aluminium plate which I then had to cut out using a vibratory saw. It was a lot of work...
-**Total time spent: 3h 30m**
-
-# October 15, 2026: Drilling the Head Plate / Printing Mounts (15.10.26)
-
 Then I printed the design of where the holes had to be and drilled them. Saidly some of the holes were not at the correct positions (milimeters off) and thus the screws of the linear rails didnt fit. There were enough though. In the mean time where I drilled holes and cut it out I also 3d printed the camera mount as well as a cable chain mount and a few cable clamps:
 ![](https://fabricate.hackclub-assets.com/c5812e538311fe42ca9116221b7e7063f8e204dca5113e93c3acbcbcd511144b/image-png/image.png)
 
-**Total time spent: 5h**
+The plate is 82 x 218 mm and holds the two MGN9 rails, the motor at the top and the camera plate at the bottom.
 
-# October 16, 2026: Paste Extruder Mechanism (16.10.26)
+**Total time spent: 6h**
+
+# October 16, 2026: Paste Extruder and Assembly (16.10.26)
 
 Beforehand I also designed a mechanism to extrude paste from a syringe:
 ![](https://fabricate.hackclub-assets.com/9f15ff5bd8e3dd809562df1e4e0a7b4cbcde67f3a8a002b0f60128130b6b6816/image-png/image.png)
 
-**Total time spent: 3h 30m**
-
-# October 18, 2026: Assembling the Head (18.10.26)
+The paste extruder pushes the syringe plunger with a stepper motor, so the amount of paste can be set in microlitres.
 
 I then assembled it all:
 ![](https://fabricate.hackclub-assets.com/062ce8d82a3675ca99d572f3a295d26b5a4c002d00a656dd5c9afab3dcd02656/image-jpeg/IMG_6994.jpeg)
 
-**Total time spent: 2h 30m**
+**Total time spent: 4h 30m**
+
+# October 18, 2026: Seesaw Belt (18.10.26)
+
+The picker hangs on one side of the belt and the paste syringe on the other, so when one goes down the other comes up. A NEMA17 at the top drives the belt and an optical sensor finds the centre when homing.
+
+![](images/renders/head-mount.png)
+
+Here is the 3D model of the head with the belt and both tools.
+
+**Total time spent: 4h**
 
 # October 20, 2026: Nozzle Changer (20.10.26)
 
 I wanted something easier and designed a nozzle changer where the Nozzles of the picker can be switched (I'm using Juki PNP Nozzles).
 
-**Total time spent: 3h**
-
-# October 26, 2026: Nozzle Sensors (26.10.26)
-
 I also wanted sensors which could check if there was a nozzle inserted or not to make sure the head either doesnt have one or has one picked up.
 
-I also had to solder the sensors to a perf PCB which also has a WCH CH32V003 whcih checks the sensors and is connected to the Motor Controller Board (Bigtreetech Octopus) (https://github.com/bigtreetech/docs/blob/master/docs/img/Octopus/Octopus_Title.webp)
+![](images/renders/juki-tool-changer.png)
 
+This is the 3D model of the nozzle changer with its five slots.
+
+**Total time spent: 3h 30m**
+
+# October 25, 2026: Sensor Board for the Nozzle Changer (25.10.26)
+
+I also had to solder the sensors to a perf PCB which also has a WCH CH32V003 whcih checks the sensors and is connected to the Motor Controller Board (Bigtreetech Octopus) (https://github.com/bigtreetech/docs/blob/master/docs/img/Octopus/Octopus_Title.webp)
 ![](https://fabricate.hackclub-assets.com/10bff4eacc945ffce6ea9050c88369b8420944ebab38ab5bd1493f5277031cbd/image-png/image.png)
 
-**Total time spent: 4h 30m**
+**Total time spent: 4h**
 
 # November 5, 2026: Housing / Mounting (5.11.26)
 
 I thought of where I can put the Raspberry pi and Bigtreetech and all the main parts like the Vakuum pump or the power supply which is also recycled from the creality 10S, and the bottom camera which is recycled from a document camera which would have been thrown away in my school.
+
+![](images/renders/control-box.png)
+
+This is the Creality housing with the Octopus inside, which was my first idea.
+
+**Total time spent: 4h**
+
+# November 6, 2026: Trying the Creality Housing (6.11.26)
 
 I first thought about mounting everything in the Creality 10S housing where it was originally mounted but then (after first trying it 
 
@@ -131,10 +176,6 @@ I first thought about mounting everything in the Creality 10S housing where it w
 
 I found out that it would be quite annoying to change stuff and upload code to the Octopus) 
 
-**Total time spent: 4h**
-
-# November 6, 2026: Cable Slot in the Housing (6.11.26)
-
 I also had to cut in a slot in the Housing to even feed all the cables from motors to sensors through
 ![](https://fabricate.hackclub-assets.com/eb1d11f96019d790a9059f59fa48fda825d1f43b10191acec5976140505ad4a4/image-jpeg/IMG_6997.jpeg)
 ![](https://fabricate.hackclub-assets.com/d44926300d2dfb7356b30cd265d45a82abf5dc3f4f8cc6e69d2fdcb8f06cac7d/image-jpeg/IMG_6995.jpeg)
@@ -142,18 +183,36 @@ I also had to cut in a slot in the Housing to even feed all the cables from moto
 
 **Total time spent: 3h 30m**
 
-# November 7, 2026: Cutting the Main Plate (7.11.26)
+# November 7, 2026: Leaving the Creality Housing (7.11.26)
+
+After trying to reuse the old Creality housing I switched to not using it. There wasn't enough space in it for everything and I couldn't connect all the cables easily.
+
+![](images/renders/control-box-internals.png)
+
+This is the rendering of the original Creality housing with everything inside: the power supply at the bottom, the Octopus above it and the Raspi and the screen at the front. Because the screen and the joystick were in it before, I also had to create a new design for them.
+
+**Total time spent: 3h**
+
+# November 8, 2026: Cutting the Main Plate (8.11.26)
 
 In the end I decided to mount everything directly on the Main plate which I got from our hardware store. It was a bit too big thus I had to cut it shorter which took forever and was quite messy with all the dust.
-
-**Total time spent: 6h**
-
-# November 9, 2026: Mounting Everything (9.11.26)
 
 Later I mounted all the components including the frame and everything to it
 ![](https://fabricate.hackclub-assets.com/6edeb763dce65baa0aaeeaa7c15fcee430d2d3859c5d4c0e057e290065a304bb/image-jpeg/IMG_6998.jpeg)
 
-**Total time spent: 6h 30m**
+The frame stands on printed feet which are screwed into the plate, so nothing moves when the head moves fast.
+
+**Total time spent: 4h 30m**
+
+# November 9, 2026: Placing the Electronics (9.11.26)
+
+The Octopus, the Raspberry Pi housing and the vacuum pump sit next to each other on the plate so the cables stay short. Everything is screwed into the wood, so I can still move things around later.
+
+![](images/renders/octopus-mount.png)
+
+This is the mount for the Octopus with its fans on the base plate.
+
+**Total time spent: 5h**
 
 # November 10, 2026: Screen / Joystic holder (10.11.26)
 
@@ -183,21 +242,38 @@ I heard that these pumps if mounted rigidly cause quite a lot of noise because o
 Since I wanted a parts feeder which would feed the parts from a Reel so the nozzle can pick them up easely I added a beam at the back where a carriage moves on the 2020 Alu Profile beam and has a motor with a gear wich meshes with the "cartriges / reels" which get moved by a small teethed gear which meshes with the holes in the tape. I didn't want to have a motor in every "cartige" so thats why the motor moves and just meshes with the gears on top of the feeder. 
 ![](https://fabricate.hackclub-assets.com/56c81d4cd921975e5b7a1e4d7e73800bb36ea1d13324924dbd426d1a9c108913/image-jpeg/IMG_6999.jpeg)
 
-**Total time spent: 8h**
+**Total time spent: 6h**
+
+# November 16, 2026: Feeder Sprocket and Peel-off (16.11.26)
+
+Each feeder has a sprocket wheel which pulls the tape forward by its holes and a small spool that peels the cover tape off, so the pocket with the part is open when the nozzle comes. The feed wheel has 20 teeth and always moves by whole teeth.
+
+![](images/renders/feeder.png)
+
+This is the 3D model of one feeder on the rail.
+
+**Total time spent: 4h 30m**
 
 # November 17, 2026: Parts Feeder Version 2 (17.11.26)
 
 These feeders are in thair 2. version and now also work with springs which hold them onto the beam.
 
-**Total time spent: 5h 30m**
+![](images/feeder-irl.jpeg)
+
+The springs press the feeder onto the beam, so I can take one off and put it back without any tools.
+
+**Total time spent: 4h 30m**
 
 # November 19, 2026: Parts Feeder (19.11.26)
 
 This was definetly the hardest part until now because there is so much mechanical stuff.
-
 ![](https://fabricate.hackclub-assets.com/c764ff5f1d3a83f453c64156dd84ee0ed55fbd571e9275f1925dd546c4811b5b/image-png/image.png)
 
-**Total time spent: 6h 30m**
+Every feeder has a QR code on top which the top camera reads, so the machine knows which part is in which feeder. An optical sensor on the carriage stops at each feeder, so it can find all of them on its own.
+
+Now the feeders are done and the next step is testing everything on the real machine.
+
+**Total time spent: 5h**
 
 # November 19, 2026: Testing (Homing) / Endstop design
 
