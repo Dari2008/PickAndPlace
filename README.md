@@ -6,7 +6,7 @@
 ![Fusion 360](https://img.shields.io/badge/Fusion%20360-3D%20models-orange)
 
 <p align="center">
-  <img src="images/renders/main-assembly.png" alt="Whole machine on its MDF base" width="720">
+  <img src="images/renders/main-assembly.png" alt="Whole machine from the side: frame, head, ten feeders, nozzle changer and the electronics on the MDF base" width="820">
 </p>
 
 
