@@ -276,8 +276,8 @@ optional. Tools are listed separately because you may already have them. The sam
 | [Binghe 3.5" TFT SPI touch display, ILI9488, 320 × 480](https://www.amazon.de/dp/B0G2C3NWFD) | Machine display | 1 | 14.99 | Amazon |
 | [leruiyezs ADS1115 ADC module, 16-bit, 4 ch, I2C](https://www.amazon.de/dp/B0G7CGFY8G) | Reads the joystick X / Y | 1 | 8.99 | Amazon |
 | [Hall effect analog sticks (PS5), pack of 4](https://www.amazon.de/dp/B0D7CVV966) | Joystick | 1 | 9.99 | Amazon |
-| Fastsaw DC-DC buck converter, 24 V / 12 V to 5 V 5 A, USB, synchronous rectifier, overload / short circuit / reverse polarity protection | 5 V supply for the Pi from 12 V | 1 | 7.99 | – |
-| USB-C to 2-pin bare wire power cable, 20 AWG, 5 V / 5 A, 3 ft, pack of 2 | Connects the converter to the Pi's USB-C input | 1 | 9.99 | – |
+| [Fastsaw DC-DC buck converter, 24 V / 12 V to 5 V 5 A, USB, synchronous rectifier, overload / short circuit / reverse polarity protection](https://www.amazon.de/dp/B0GKY19J9Q) | 5 V supply for the Pi from 12 V | 1 | 7.99 | Amazon |
+| [USB-C to 2-pin bare wire power cable, 20 AWG, 5 V / 5 A, 3 ft, pack of 2](https://www.amazon.de/dp/B0DQJ3DYTB) | Connects the converter to the Pi's USB-C input | 1 | 9.99 | Amazon |
 | [2×20 pin female header, 2.54 mm, pack of 10](https://www.amazon.de/dp/B0GSVZD1CP) | Carrier board on the Pi header | 1 | 10.97 | Amazon |
 | [ELEGOO double-sided prototype PCB kit, 32 pcs](https://www.amazon.de/dp/B0734XYJPM) | Carrier board | 1 | 14.99 | Amazon |
 | [ALLECIN electrolytic capacitor assortment, 0.1–1000 µF](https://www.amazon.de/dp/B0C1VBXCQM) | Carrier board, 12 V input buffer | 1 | 10.99 | Amazon |
