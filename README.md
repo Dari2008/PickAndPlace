@@ -262,7 +262,7 @@ On Windows just double-click `ui-preview.cmd`. Everything is in [SOFTWARE.md](SO
 
 ## Bill of materials
 
-Prices are what I paid (EUR, Nov 2026). The total is **about €664**: €654 for 47 items including the tools,
+Prices are what I paid (EUR, Nov 2026). The total is **about €670**: €660 for 48 items including the tools,
 plus about €10 shipping (Amazon shipped free). The Raspberry Pi is not counted, and €18 of the parts are
 optional. Tools are listed separately because you may already have them. The same list is in [BOM.csv](BOM.csv).
 
@@ -276,14 +276,15 @@ optional. Tools are listed separately because you may already have them. The sam
 | [Binghe 3.5" TFT SPI touch display, ILI9488, 320 × 480](https://www.amazon.de/dp/B0G2C3NWFD) | Machine display | 1 | 14.99 | Amazon |
 | [leruiyezs ADS1115 ADC module, 16-bit, 4 ch, I2C](https://www.amazon.de/dp/B0G7CGFY8G) | Reads the joystick X / Y | 1 | 8.99 | Amazon |
 | [Hall effect analog sticks (PS5), pack of 4](https://www.amazon.de/dp/B0D7CVV966) | Joystick | 1 | 9.99 | Amazon |
-| [QIQIAZI DC-DC buck converter, 10–90 V to 5 V 5 A, USB-C](https://www.amazon.de/dp/B0FMJXJL6S) | 5 V supply for the Pi from 12 V | 1 | 11.99 | Amazon |
+| Fastsaw DC-DC buck converter, 24 V / 12 V to 5 V 5 A, USB, synchronous rectifier, overload / short circuit / reverse polarity protection | 5 V supply for the Pi from 12 V | 1 | 7.99 | – |
+| USB-C to 2-pin bare wire power cable, 20 AWG, 5 V / 5 A, 3 ft, pack of 2 | Connects the converter to the Pi's USB-C input | 1 | 9.99 | – |
 | [2×20 pin female header, 2.54 mm, pack of 10](https://www.amazon.de/dp/B0GSVZD1CP) | Carrier board on the Pi header | 1 | 10.97 | Amazon |
 | [ELEGOO double-sided prototype PCB kit, 32 pcs](https://www.amazon.de/dp/B0734XYJPM) | Carrier board | 1 | 14.99 | Amazon |
 | [ALLECIN electrolytic capacitor assortment, 0.1–1000 µF](https://www.amazon.de/dp/B0C1VBXCQM) | Carrier board, 12 V input buffer | 1 | 10.99 | Amazon |
 | [Youmile optical endstop module with 1 m cable, 6 pcs](https://www.amazon.de/dp/B09BTMDW5P) | Z home flag, feeder sensor | 1 | 10.99 | Amazon |
 | [Joycabin WS2812 RGB LED ring, 16 LEDs, pack of 4](https://www.amazon.de/dp/B0H2PW6HJT) | Bottom camera light | 1 | 8.95 | Amazon |
 | [DAOKAI micro limit switch with roller lever, 20 pcs](https://www.amazon.de/dp/B09YYJ23Z4) | *Optional:* only if you don't use sensorless homing or optical sensors | 1 | 6.69 | Amazon |
-| | | | **182.18** | |
+| | | | **188.17** | |
 
 ### Motion (frame and gantry)
 
@@ -385,7 +386,7 @@ Also needed: a soldering iron (for the carrier board and the heat-set inserts), 
 
 | | EUR |
 |---|--:|
-| [Electronics and control](#electronics-and-control) | 182.18 |
+| [Electronics and control](#electronics-and-control) | 188.17 |
 | [Motion (frame and gantry)](#motion-frame-and-gantry) | 107.78 |
 | [Head and nozzle](#head-and-nozzle) | 100.23 |
 | [Vacuum](#vacuum) | 52.10 |
@@ -393,4 +394,4 @@ Also needed: a soldering iron (for the carrier board and the heat-set inserts), 
 | [Wiring](#wiring-1) | 69.18 |
 | [Fasteners and consumables](#fasteners-and-consumables) | 90.70 |
 | Shipping (about; Amazon shipped free) | 10.00 |
-| **Total** | **623.16** |
+| **Total** | **629.15** |
