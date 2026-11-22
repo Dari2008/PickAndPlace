@@ -38,6 +38,7 @@ void Ui::pop()
 {
     if (stack_.size() <= 1)
         return;
+    top()->leave();
     stack_.pop_back();
     focus_ = top()->defaultFocus();
     top()->resume();
@@ -47,14 +48,20 @@ void Ui::pop()
 void Ui::replace(Screen *s)
 {
     if (!stack_.empty())
+    {
+        top()->leave();
         stack_.pop_back();
+    }
     push(s);
 }
 
 void Ui::goHome()
 {
     while (stack_.size() > 1)
+    {
+        top()->leave();
         stack_.pop_back();
+    }
     if (stack_.empty() || stack_[0] != &homeScreen)
     {
         stack_.clear();
@@ -90,7 +97,8 @@ void Ui::toast(const std::string &text, uint16_t color)
 {
     toast_ = text;
     toastColor_ = color;
-    toastUntil_ = millis() + 1600;
+    // long texts stay longer, to read them (up to 6 s)
+    toastUntil_ = millis() + std::min<uint32_t>(6000, 1600 + (text.size() > 25 ? (uint32_t)(text.size() - 25) * 45 : 0));
     dirty_ = true;
 }
 

@@ -5,6 +5,7 @@
 #include "screens.h"
 
 #include <cmath>
+#include "../hw/input.h"
 
 SetupScreen setupScreen;
 
@@ -101,9 +102,36 @@ std::vector<std::string> SetupScreen::row(int r) const
     {
     case 4: return {"-1", "-0.1", "+0.1", "+1"};
     case 5: return {"Paste touches"};
+    case 7: return {"Live picture"};
+    case 8: return {"Live picture"};
     case 9: return {"Without board: on a mark"};
     default: return {};
     }
+}
+
+// Stick: X / Y; with the stick button held down: Z (stick up / down)
+void SetupScreen::tick()
+{
+    const bool z = input.buttonDown();
+    if (z && fabsf(input.stick().y) >= 0.01f)
+        zJogged_ = true;
+    stickJog(z ? 2 : -1);
+}
+
+// Button released after moving Z: no click on the focused button
+bool SetupScreen::press()
+{
+    const bool used = zJogged_;
+    zJogged_ = false;
+    return used;
+}
+
+// Held to move Z (stick already out): no "back"
+bool SetupScreen::hold()
+{
+    const bool used = zJogged_ || fabsf(input.stick().y) >= 0.01f;
+    zJogged_ = false; // no press follows a hold
+    return used;
 }
 
 std::string SetupScreen::liveLine() const
@@ -123,7 +151,7 @@ std::string SetupScreen::liveLine() const
     case 8:
     case 9:
     case 14:
-        snprintf(t, sizeof(t), "head X %.2f  Y %.2f  Z %.2f · stick: move", (double)s.x, (double)s.y, (double)s.z);
+        snprintf(t, sizeof(t), "head X %.2f  Y %.2f  Z %.2f · stick XY, held Z", (double)s.x, (double)s.y, (double)s.z);
         return t;
     case 7:
     case 13:
@@ -281,7 +309,9 @@ void SetupScreen::action(uint16_t id)
             calRun("CAL BOTTOM", "Bottom camera");
         break;
     case 7:
-        if (a == 0)
+        if (b == 0)
+            camerasScreen.open(0);
+        else if (a == 0)
             calRun("CAL BOTTOM GRID", "Bottom camera checkerboard");
         else if (a == 1)
             calRun("CAL BOTTOM LENS", "Bottom camera lens");
@@ -289,7 +319,9 @@ void SetupScreen::action(uint16_t id)
             cycleGridSize();
         break;
     case 8:
-        if (a == 0)
+        if (b == 0)
+            camerasScreen.open(0);
+        else if (a == 0)
             ui.send(machine.status().pump > 0 ? "PUMP OFF" : "PUMP ON");
         else
             calRun("CAL ROTSIGN", "Rotation direction");

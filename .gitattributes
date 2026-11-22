@@ -1,5 +1,6 @@
-models/control-box/assembly.step filter=lfs diff=lfs merge=lfs -text
-models/control-box/octopus.step filter=lfs diff=lfs merge=lfs -text
-models/main-assembly/assembly.step filter=lfs diff=lfs merge=lfs -text
-models/octopus-mount/assembly.step filter=lfs diff=lfs merge=lfs -text
-models/octopus-mount/octopus.step filter=lfs diff=lfs merge=lfs -text
+cad/control-box/assembly.step filter=lfs diff=lfs merge=lfs -text
+cad/control-box/octopus.step filter=lfs diff=lfs merge=lfs -text
+cad/main-assembly/assembly.step filter=lfs diff=lfs merge=lfs -text
+cad/octopus-mount/assembly.step filter=lfs diff=lfs merge=lfs -text
+cad/octopus-mount/octopus.step filter=lfs diff=lfs merge=lfs -text
+cad/main-assembly/main-assembly.f3d filter=lfs diff=lfs merge=lfs -text

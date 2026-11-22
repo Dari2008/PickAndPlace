@@ -117,6 +117,8 @@ static const Row ROWS[] = {
     {"pocket_search", T_FLOAT, 0.2f, 50, 2.0f, OFS(pocketSearch), nullptr},
     {"light_top", T_U8, 0, 100, 100, OFS(lightTop), nullptr},
     {"light_bottom", T_U8, 0, 100, 100, OFS(lightBottom), nullptr},
+    {"light_part_rgb", T_TEXT, 0, 0, 0, OFS(lightPartRgb), "FF0000"},
+    {"light_cal_rgb", T_TEXT, 0, 0, 0, OFS(lightCalRgb), "FFFFFF"},
     {"cal_step", T_FLOAT, 0.1f, 50, 3, OFS(calStep), nullptr},
     {"cal_grid", T_FLOAT, 0.2f, 50, 2, OFS(calGrid), nullptr},
     {"setup_step", T_U8, 0, 50, 0, OFS(setupStep), nullptr},

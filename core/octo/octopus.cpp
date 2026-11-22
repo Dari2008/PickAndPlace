@@ -203,6 +203,27 @@ uint64_t Octopus::send(const std::string &line, int timeoutMs)
     return r->id;
 }
 
+void Octopus::postJog(const std::string &line)
+{
+    {
+        std::lock_guard<std::mutex> l(m_);
+        if (!open_)
+            return;
+        for (auto &r : queue_)
+            if (!r->sent && r->line.compare(0, 5, "JOGV ") == 0)
+            {
+                r->line = line;
+                return;
+            }
+        auto r = std::make_shared<Request>();
+        r->id = nextId_++; // not in byId_: finishHead() just drops it
+        r->line = line;
+        r->timeoutMs = 2000;
+        queue_.push_back(r);
+    }
+    cv_.notify_all();
+}
+
 void Octopus::post(const std::string &line, int timeoutMs)
 {
     {
@@ -382,6 +403,13 @@ void Octopus::run()
                 r->line = "PING";
                 r->timeoutMs = 2000;
                 queue_.push_back(r);
+            }
+            // A request on the wire the board answers only at its end (WAIT, HOME, PROBE): an empty
+            // line now and then, so the watchdog doesn't call a long move "link lost" (no answer to it)
+            else if (!queue_.empty() && queue_.front()->sent && millis() - lastTx_ > KEEPALIVE_MS)
+            {
+                lastTx_ = millis();
+                tx_->write("");
             }
             pump();
             // Timeout of the request on the wire

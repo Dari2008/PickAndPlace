@@ -5,7 +5,8 @@
 //   browser -> {t:"cmd", id, line}                 server -> {t:"reply", id, ok, error, records:[{type, f}|{type:"|", text}]}
 //   browser -> {t:"sys", id, op:"info"|"password"}  server -> {t:"reply", id, ok, sys:{...}}
 //   server  -> {t:"ev", type, f} (controller events), {t:"link", connected}, {t:"upload", path, done, total, state}
-// HTTP: POST /api/login (password=...), /api/logout, GET /api/session, POST /api/upload?path=/jobs/x.pap (body = text)
+// HTTP: POST /api/login (password=...), /api/logout, GET /api/session, POST /api/upload?path=/jobs/x.pap (body = text),
+//       GET /api/cam?cam=top|bottom (one JPEG of the camera now: pap-core saves it into its data folder, CAM ... SAVE)
 
 import * as fs from 'node:fs';
 import * as http from 'node:http';
@@ -152,6 +153,28 @@ export function startServer(cfg: Config, core = new CoreLink(cfg.coreHost, cfg.c
     broadcast({ t: 'upload', path: p, done: r.ok ? total : 0, total, state: r.ok ? 'done' : 'error', error: r.error });
   }
 
+  // Live picture: one frame per request and camera at a time (the browser asks for the next when one arrived)
+  const camBusy: Record<string, Promise<void>> = {};
+  async function camFrame(res: http.ServerResponse, url: URL) {
+    const cam = url.searchParams.get('cam') === 'bottom' ? 'bottom' : 'top';
+    const prev = camBusy[cam] || Promise.resolve();
+    let done!: () => void;
+    camBusy[cam] = new Promise<void>((r) => (done = r));
+    await prev;
+    try {
+      const name = `.live_${cam}.jpg`;
+      const r = await core.send(`CAM ${cam} SAVE /${name}`, 5000);
+      if (!r.ok) return json(res, 503, { ok: false, error: r.error || 'no picture' });
+      const data = await fs.promises.readFile(path.join(cfg.data, name));
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' });
+      res.end(data);
+    } catch (e) {
+      json(res, 503, { ok: false, error: (e as Error).message });
+    } finally {
+      done();
+    }
+  }
+
   function serveStatic(res: http.ServerResponse, url: URL) {
     let rel = decodeURIComponent(url.pathname);
     if (rel.endsWith('/')) rel += 'index.html';
@@ -188,6 +211,10 @@ export function startServer(cfg: Config, core = new CoreLink(cfg.coreHost, cfg.c
     if (route === 'POST /api/upload') {
       if (!authed(req)) return json(res, 401, { ok: false });
       return upload(req, res, url);
+    }
+    if (route === 'GET /api/cam') {
+      if (!authed(req)) return json(res, 401, { ok: false });
+      return camFrame(res, url);
     }
     if (req.method === 'GET') return serveStatic(res, url);
     res.writeHead(405).end();

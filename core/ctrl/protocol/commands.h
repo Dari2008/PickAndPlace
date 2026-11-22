@@ -42,6 +42,10 @@ namespace commands
     // dx / dy = correction applied (mm). False + err when off, not set up or not found.
     bool visualHome(float &dx, float &dy, std::string &err);
 
+    // JOGV line to the Octopus at once (the display's joystick calls this directly, not through the
+    // command loop). False while a job / auto detect runs.
+    bool jogVelocity(const std::string &line);
+
     // The command line being executed, as it came in (for passing it on to the Octopus)
     const std::string &currentLine();
     // Resolve a path argument against the port's working folder into `out`

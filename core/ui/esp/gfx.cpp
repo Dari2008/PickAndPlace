@@ -211,17 +211,55 @@ std::string Gfx::fit(const std::string &t, Font f, int maxW)
     std::string cut = t;
     while (!cut.empty())
     {
-        do
+        // one whole character: its continuation bytes, then its lead byte
+        while (!cut.empty() && ((unsigned char)cut.back() & 0xC0) == 0x80)
             cut.pop_back();
-        while (!cut.empty() && ((unsigned char)cut.back() & 0xC0) == 0x80);
-        if (!cut.empty() && ((unsigned char)cut.back() & 0x80))
-            cut.pop_back(); // lead byte of the removed character
+        if (!cut.empty())
+            cut.pop_back();
         while (!cut.empty() && cut.back() == ' ')
             cut.pop_back();
         if (width((cut + "...").c_str(), f) <= maxW)
             return cut + "...";
     }
     return "";
+}
+
+std::vector<std::string> Gfx::wrap(const std::string &t, Font f, int maxW, int maxLines)
+{
+    std::vector<std::string> lines;
+    if (maxLines <= 1)
+        return {fit(t, f, maxW)};
+    std::string cur;
+    size_t i = 0;
+    while (i < t.size())
+    {
+        size_t j = t.find(' ', i);
+        if (j == std::string::npos)
+            j = t.size();
+        const std::string word = t.substr(i, j - i);
+        i = j + 1;
+        if (word.empty())
+            continue;
+        const std::string tryLine = cur.empty() ? word : cur + " " + word;
+        if (cur.empty() || width(tryLine.c_str(), f) <= maxW)
+        {
+            cur = tryLine;
+            continue;
+        }
+        lines.push_back(cur);
+        cur = word;
+        if ((int)lines.size() == maxLines - 1)
+        {
+            // the rest goes on the last line
+            cur = t.substr(i - word.size() - 1);
+            break;
+        }
+    }
+    if (!cur.empty())
+        lines.push_back(cur);
+    for (std::string &l : lines)
+        l = fit(l, f, maxW);
+    return lines;
 }
 
 int Gfx::text(const char *t, int x, int y, Font f, uint16_t color, Align a)
@@ -524,15 +562,40 @@ void Gfx::button(uint16_t id, const char *label, int x, int y, int w, int h, Kin
         rrect(x, y, w, h, 8, fillc);
     if (focused(id))
         rframe(x - 3, y - 3, w + 6, h + 6, 10, k == Kind::Primary ? th::TEXT : th::ACCENT, 2);
-    const int tw = (label && *label ? width(label, f) : 0) + (ic != Icon::None ? (label && *label ? 18 : 14) : 0);
+    // Label too wide: a smaller font, then two lines (tall enough), then cut with "..."
+    const bool hasLabel = label && *label, hasIcon = ic != Icon::None;
+    const int avail = w - 10 - (hasIcon ? 18 : 0);
+    std::vector<std::string> lines;
+    if (hasLabel)
+    {
+        bool fits = false;
+        for (Font c : {f, Font::Body, Font::Small})
+            if (width(label, c) <= avail)
+            {
+                f = c, fits = true;
+                break;
+            }
+        if (fits)
+            lines.push_back(label);
+        else
+        {
+            f = Font::Small;
+            lines = wrap(label, f, avail, h >= 26 ? 2 : 1);
+        }
+    }
+    int lw = 0;
+    for (const std::string &l : lines)
+        lw = std::max(lw, width(l.c_str(), f));
+    const int tw = lw + (hasIcon ? (hasLabel ? 18 : 14) : 0);
     int tx = x + (w - tw) / 2;
-    if (ic != Icon::None)
+    if (hasIcon)
     {
         icon(ic, tx, y + h / 2 - 7, color);
         tx += 18;
     }
-    if (label && *label)
-        text(label, tx, y + h / 2, f, color);
+    const int lh = 11;
+    for (size_t i = 0; i < lines.size(); i++)
+        text(lines[i], tx + lw / 2, y + h / 2 + (int)(i * lh) - (int)((lines.size() - 1) * lh) / 2, f, color, Align::Center);
     addHit(id, {(int16_t)x, (int16_t)y, (int16_t)w, (int16_t)h});
 }
 
@@ -615,12 +678,27 @@ void Gfx::dim()
 
 void Gfx::toast(const char *t, uint16_t color)
 {
-    const int w = width(t, Font::BodyBold) + 40;
-    const int x = (W - w) / 2, y = H - 44;
-    rrect(x, y, w, 30, 15, th::PANEL2);
-    rframe(x, y, w, 30, 15, th::LINE);
-    icon(color == th::BAD ? Icon::Warn : Icon::Check, x + 10, y + 8, color);
-    text(t, x + 28, y + 15, Font::BodyBold, th::TEXT);
+    // One line when it fits, else up to 4 lines in the plain font, growing upwards
+    const int textMax = W - 16 - 40;
+    Font f = Font::BodyBold;
+    std::vector<std::string> lines;
+    if (width(t, f) <= textMax)
+        lines.push_back(t);
+    else
+    {
+        f = Font::Body;
+        lines = wrap(t, f, textMax, 4);
+    }
+    int tw = 0;
+    for (const std::string &l : lines)
+        tw = std::max(tw, width(l.c_str(), f));
+    const int n = (int)lines.size(), lh = 14, h = std::max(30, n * lh + 14);
+    const int w = tw + 40, x = (W - w) / 2, y = H - 14 - h;
+    rrect(x, y, w, h, 15, th::PANEL2);
+    rframe(x, y, w, h, 15, th::LINE);
+    icon(color == th::BAD ? Icon::Warn : Icon::Check, x + 10, y + h / 2 - 7, color);
+    for (int i = 0; i < n; i++)
+        text(lines[i], x + 28, y + h / 2 + i * lh - (n - 1) * lh / 2, f, th::TEXT);
 }
 
 // ---------------------------------------------------------------- list

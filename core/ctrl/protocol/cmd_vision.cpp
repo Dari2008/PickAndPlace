@@ -16,7 +16,8 @@
 //   CAL TOP [step=]          top camera scale / rotation / skew (camera centred above a mark)
 //   CAL HEADS NOZZLE [CAM] | PASTE [CAM] | CAMERA [MANUAL]   one reference (a mark, or with CAM the
 //                            bottom camera) for nozzle, paste tip and top camera -> head1_offset_x / _y,
-//                            cam_top_off_x / _y (+ vhome_ref_x / _y with the bottom camera); nozzle first
+//                            cam_top_off_x / _y (+ vhome_ref_x / _y with the bottom camera); nozzle first.
+//                            CAM / CAMERA find it, move it onto the cross, look again until it sits there
 //   CAL TOPOFFSET MARK       remember the nozzle position above a mark (nozzle tip on the mark)
 //   CAL TOPOFFSET            then: camera roughly above the same mark -> cam_top_off_x / _y
 //   CAL BOTTOM [step=]       nozzle tip above the bottom camera: matrix, rotation centre, look position
@@ -26,6 +27,8 @@
 //                            picture: lens k1 / k2, scale and skew from one picture; rotation from two small
 //                            head moves (top) or the previous matrix (bottom)
 //   CAL ROTSIGN              part on the nozzle above the bottom camera: turn direction
+//   CAL EXPOSURE BOTTOM | TOP [AUTO]   light on, automatic exposure until steady, then the same
+//                            brightness as a fixed exposure -> cam_*_exposure (AUTO: -1 = automatic)
 //   CAL VACUUM BASE | OPEN | BLOCKED   pump off / nozzle open / nozzle blocked -> vac_baseline, vac_pick_min
 //   CAL JOY CENTER | RANGE [ms=5000]   joystick centre / full circles for min / max
 #include "commands.h"
@@ -39,8 +42,10 @@
 #include "../job/runner.h"
 #include "../settings/general_settings.h"
 #include "../nozzles.h"
+#include "../mosfets.h"
 
 #include <cmath>
+#include <memory>
 
 std::string (*screenJpegHook)(int quality, int &w, int &h) = nullptr; // set by the display UI
 bool (*screenInputHook)(const char *what, int x, int y) = nullptr;     // "touch" x y, "release", "up", "down", "press", "hold"
@@ -329,6 +334,20 @@ void cmdScreen(Port &port, Args &args)
 
 // ---- calibration ------------------------------------------------------------------------------
 
+// The bottom ring: bottomLightLine() (mosfets.h), calibration colour
+
+// Bottom ring on at light_bottom for as long as it lives, then back to what it was
+struct BottomLight
+{
+    int before;
+    BottomLight() : before(octo.status().lightBottom)
+    {
+        octo.call(bottomLightLine());
+        delay(settings.camSettleMs);
+    }
+    ~BottomLight() { octo.call("LIGHT bottom " + std::to_string(before)); }
+};
+
 static bool octoOk(const std::string &line, std::string &err)
 {
     const OctoReply r = octo.call(line);
@@ -344,7 +363,7 @@ static bool jogAndMark(int cam, const char *jog, Feature &f, std::string &err)
         return false;
     delay(settings.camSettleMs);
     Frame fr;
-    if (!cams.frameAfter(cam, millis(), fr, 3000))
+    if (!cams.steadyFrame(cam, fr, 3000))
     {
         err = "no picture";
         return false;
@@ -352,6 +371,16 @@ static bool jogAndMark(int cam, const char *jog, Feature &f, std::string &err)
     f = detectMark(fr.gray, fr.gray.w / 2.0f, fr.gray.h / 2.0f, std::min(fr.gray.w, fr.gray.h) / 2.5f);
     if (!f.ok)
         err = f.error;
+    else
+    {
+        // green circle in the live picture: what it found
+        Overlay o;
+        o.kind = Overlay::CIRCLE;
+        o.x = f.x, o.y = f.y;
+        o.radius = std::max(f.size, 6.0f);
+        o.ms = fr.ms;
+        cams.setOverlay(cam, o);
+    }
     return f.ok;
 }
 
@@ -369,7 +398,7 @@ static bool headPosition(float &x, float &y)
 
 // Nozzle / paste tip seen by the bottom camera (bottom light on for it): d = tip position relative to
 // the point on the optical axis (picture centre), mm
-static bool tipInBottomCamera(float &dx, float &dy, std::string &err)
+static bool tipInBottomCamera(float &dx, float &dy, std::string &err, bool light = true)
 {
     if (!vision::available(vision::BOTTOM))
     {
@@ -377,10 +406,12 @@ static bool tipInBottomCamera(float &dx, float &dy, std::string &err)
         return false;
     }
     std::string e2;
-    octoOk("LIGHT bottom ON", e2);
+    if (light)
+        octoOk(bottomLightLine(), e2);
     Feature f;
     const bool ok = jogAndMark(vision::BOTTOM, nullptr, f, err);
-    octoOk("LIGHT bottom 0", e2);
+    if (light)
+        octoOk("LIGHT bottom 0", e2);
     if (!ok)
         return false;
     Frame fr;
@@ -408,6 +439,111 @@ static bool markInTopCamera(float &dx, float &dy, std::string &err)
     camPxToMm(settings.cam[vision::TOP].m, settings.cam[vision::TOP].k, fr.gray.w, fr.gray.h, f.x, f.y, fr.gray.w / 2.0f,
               fr.gray.h / 2.0f, dx, dy);
     return true;
+}
+
+// Find the tip (bottom camera) or the mark (top camera) and move the head until it sits on the cross.
+// Nothing of the camera calibration is used, all in picture pixels: test moves in X, then Y show how the
+// found tip / mark moves in the picture (started at 0.5 mm, doubled up to 4 mm until it moves at least
+// HEAD_PROBE_PX), so swapped, mirrored, turned or wrongly scaled camera axes don't matter. Then it moves
+// onto the cross and looks again until it is within HEAD_CENTRE_MM (head mm) or half a pixel.
+// d = like a single look without centring: bottom = tip - axis (head would move -d), top = mark -
+// picture centre (head would move +d), from what is left after the last move; moves = moves made.
+static const float HEAD_CENTRE_MM = 0.03f;
+static const float HEAD_PROBE_PX = 12.0f;
+static bool centreOn(int cam, float &dx, float &dy, int &moves, std::string &err)
+{
+    const bool bottom = cam == vision::BOTTOM;
+    moves = 0;
+    char line[160];
+    if (!vision::available((vision::Cam)cam))
+    {
+        err = bottom ? "bottom camera not available" : "top camera not available";
+        return false;
+    }
+    // found tip / mark, px from the picture centre
+    auto look = [&](float &x, float &y) {
+        Feature f;
+        if (!jogAndMark(cam, nullptr, f, err))
+            return false;
+        Frame fr;
+        cams.latest(cam, fr);
+        x = f.x - fr.gray.w / 2.0f, y = f.y - fr.gray.h / 2.0f;
+        return true;
+    };
+    auto jog = [&](float x, float y) {
+        snprintf(line, sizeof(line), "JOG x=%.4f y=%.4f speed=10", x, y);
+        moves++;
+        return octoOk(line, err) && octoOk("WAIT", err);
+    };
+    std::unique_ptr<BottomLight> light; // bottom ring on for the whole centring (no exposure jumps)
+    std::string e2;
+    if (bottom)
+        light.reset(new BottomLight());
+    else
+        octoOk("LIGHT bottom 0", e2); // it would shine into the top camera
+
+    // seen position s (px) at the start, after +X and after +Y
+    float s0x, s0y, s1x = 0, s1y = 0, s2x, s2y, probe = 0.5f;
+    if (!look(s0x, s0y))
+        return false;
+    for (;;)
+    {
+        if (!jog(probe, 0) || !look(s1x, s1y))
+            return false;
+        if (hypotf(s1x - s0x, s1y - s0y) >= HEAD_PROBE_PX || probe >= 4)
+            break;
+        if (!jog(-probe, 0)) // back, then a bigger test move
+            return false;
+        probe *= 2;
+    }
+    if (!jog(-probe, probe) || !look(s2x, s2y))
+        return false;
+    // J = change of s per head mm (columns: X, Y)
+    const float a = (s1x - s0x) / probe, c = (s1y - s0y) / probe;
+    const float b = (s2x - s0x) / probe, d = (s2y - s0y) / probe;
+    const float det = a * d - b * c, nx = hypotf(a, c), ny = hypotf(b, d);
+    // each axis must move it a few px, and in clearly different directions (sin of the angle)
+    if (nx * probe < 3 || ny * probe < 3 || fabsf(det) < 0.3f * nx * ny)
+    {
+        snprintf(line, sizeof(line),
+                 "the picture doesn't follow the head: %.2f mm X moved it %.1f px, Y %.1f px, angle %.0f deg "
+                 "(found something that isn't the tip / mark?)",
+                 probe, nx * probe, ny * probe, nx > 0 && ny > 0 ? asinf(std::min(1.0f, fabsf(det) / (nx * ny))) * 57.3f : 0.0f);
+        err = line;
+        return false;
+    }
+    float sx = s2x, sy = s2y, last = 1e9f;
+    for (;;)
+    {
+        // head move h that brings s to 0: J h = -s
+        const float hx = -(d * sx - b * sy) / det, hy = -(-c * sx + a * sy) / det;
+        const float r = hypotf(hx, hy);
+        if (r <= HEAD_CENTRE_MM || hypotf(sx, sy) <= 0.5f)
+        {
+            dx = bottom ? -hx : hx, dy = bottom ? -hy : hy;
+            return true;
+        }
+        if (r > 15)
+        {
+            snprintf(line, sizeof(line), "%.1f mm from the cross - move it closer first", r);
+            err = line;
+            return false;
+        }
+        if (moves >= 10)
+        {
+            snprintf(line, sizeof(line), "still %.3f mm off after %d moves", r, moves);
+            err = line;
+            return false;
+        }
+        if (r > 0.2f && r > last * 0.8f)
+        {
+            err = "it does not get closer (the tip / mark found is not the same each time?)";
+            return false;
+        }
+        last = r;
+        if (!jog(hx, hy) || !look(sx, sy))
+            return false;
+    }
 }
 
 namespace commands
@@ -578,7 +714,7 @@ static bool gridPicture(int cam, const float k[2], std::vector<GridPt> &pts, flo
 {
     delay(settings.camSettleMs);
     Frame fr;
-    if (!cams.frameAfter(cam, millis(), fr, 3000))
+    if (!cams.steadyFrame(cam, fr, 3000))
     {
         err = "no picture";
         return false;
@@ -717,7 +853,7 @@ void cmdCal(Port &port, Args &args)
             float m[4], k[2], rmsLin, rmsLens, moveScale;
             int squares = 0;
             if (!top)
-                octoOk("LIGHT bottom ON", err);
+                octoOk(bottomLightLine(), err);
             const bool ok = gridCal(cam, size, top ? -1.0f : 1.0f, m, k, rmsLin, rmsLens, moveScale, squares, err);
             if (!top)
                 octoOk("LIGHT bottom 0", err);
@@ -751,7 +887,7 @@ void cmdCal(Port &port, Args &args)
             const char *pre = top ? "cam_top_" : "cam_bottom_";
             float m[4], k[2], rmsLin, rmsLens;
             if (!top)
-                octoOk("LIGHT bottom ON", err); // the tip has to stand out
+                octoOk(bottomLightLine(), err); // the tip has to stand out
             const bool ok = lensCal(cam, top ? -1.0f : 1.0f, m, k, rmsLin, rmsLens, err);
             if (!top)
                 octoOk("LIGHT bottom 0", err);
@@ -825,6 +961,98 @@ void cmdCal(Port &port, Args &args)
         return;
     }
 
+    // CAL EXPOSURE BOTTOM | TOP [AUTO]: the camera's light on as for a measurement, automatic exposure until
+    // the picture stands still, then the fixed exposure with the same brightness -> cam_*_exposure.
+    // AUTO: back to automatic (-1).
+    if (args.is(1, PSTR("EXPOSURE")))
+    {
+        const bool top = args.is(2, PSTR("TOP"));
+        if (!top && !args.is(2, PSTR("BOTTOM")))
+        {
+            out::error(p, PSTR("usage: CAL EXPOSURE BOTTOM | TOP [AUTO]"));
+            return;
+        }
+        const vision::Cam c = top ? vision::TOP : vision::BOTTOM;
+        const char *key = top ? "cam_top_exposure" : "cam_bottom_exposure";
+        auto done = [&](float e, float level, float target) {
+            out::rec(p, PSTR("cal"));
+            out::str(p, PSTR("what"), "exposure");
+            out::str(p, PSTR("cam"), top ? "top" : "bottom");
+            out::flt(p, PSTR("exposure"), e, 0);
+            if (level >= 0)
+            {
+                out::flt(p, PSTR("level"), level, 0);
+                out::flt(p, PSTR("auto_level"), target, 0);
+            }
+            p.println();
+            out::ok(p);
+        };
+        setNum(key, -1);
+        if (!vision::available(c))
+        {
+            out::error(p, top ? PSTR("top camera not available") : PSTR("bottom camera not available"));
+            return;
+        }
+        cams.setExposure(c, -1);
+        if (args.is(3, PSTR("AUTO")))
+        {
+            settings.save();
+            done(-1, -1, 0);
+            return;
+        }
+        // light as for a measurement: bottom ring for the bottom camera; top ring (not the bottom one) for the top
+        std::unique_ptr<BottomLight> bl;
+        const int topBefore = octo.status().lightTop;
+        if (top)
+        {
+            octoOk("LIGHT bottom 0", err);
+            octoOk("LIGHT top " + std::to_string((int)settings.lightTop), err);
+            delay(settings.camSettleMs);
+        }
+        else
+            bl.reset(new BottomLight());
+        Frame f;
+        cams.steadyFrame(c, f, 3000);
+        cams.steadyFrame(c, f, 3000); // twice: a slow automatic gets its time
+        const float target = meanLevel(f.gray);
+        // fixed exposure: 3rd frame after the change (the first ones may still have the old one)
+        auto levelAt = [&](float e) {
+            setNum(key, e);
+            cams.setExposure(c, e);
+            Frame g;
+            uint32_t t = millis();
+            for (int i = 0; i < 3; i++)
+            {
+                if (!cams.frameAfter(c, t, g, 2000))
+                    return -1.0f;
+                t = g.ms;
+            }
+            return meanLevel(g.gray);
+        };
+        // brightness grows with the exposure: halve the range (on a log scale) 12 times
+        float lo = 0, hi = logf(2500), level = 0;
+        for (int i = 0; i < 12 && level >= 0; i++)
+        {
+            const float mid = (lo + hi) / 2;
+            level = levelAt(expf(mid));
+            (level < target ? lo : hi) = mid;
+        }
+        const float e = roundf(expf((lo + hi) / 2));
+        level = level < 0 ? -1 : levelAt(e);
+        if (top)
+            octoOk("LIGHT top " + std::to_string(topBefore), err);
+        if (level < 0)
+        {
+            setNum(key, -1);
+            cams.setExposure(c, -1);
+            out::error(p, PSTR("no picture"));
+            return;
+        }
+        settings.save();
+        done(e, level, target);
+        return;
+    }
+
     // CAL HEADS NOZZLE | PASTE [CAM] | CAMERA [MANUAL]: one reference point for nozzle, paste tip and top
     // camera. Reference: a mark on the bed (tips put on it by eye), or with CAM the bottom camera (it finds
     // the tip; the reference is then the point on its optical axis).
@@ -843,21 +1071,34 @@ void cmdCal(Port &port, Args &args)
             out::error(p, PSTR("no position from the motion board"));
             return;
         }
+        int moves = -1; // -1: not centred by the camera
+        float dx = 0, dy = 0;
         auto result = [&](const char *what, float x, float y) {
             out::rec(p, PSTR("cal"));
             out::str(p, PSTR("what"), what);
             out::flt(p, PSTR("x"), x, 3);
             out::flt(p, PSTR("y"), y, 3);
+            if (moves >= 0)
+            {
+                out::num(p, PSTR("moves"), moves);
+                out::flt(p, PSTR("off"), hypotf(dx, dy), 3); // left after centring, mm
+            }
+        };
+        // Tip over the bottom camera: onto its cross, then where the head stands now
+        auto centreTip = [&](const char *what) {
+            if (!centreOn(vision::BOTTOM, dx, dy, moves, err))
+            {
+                out::error2(p, what, err.c_str());
+                return false;
+            }
+            headPosition(hx, hy);
+            return true;
         };
         const bool cam = args.is(3, PSTR("CAM"));
         if (args.is(2, PSTR("NOZZLE")))
         {
-            float dx = 0, dy = 0;
-            if (cam && !tipInBottomCamera(dx, dy, err))
-            {
-                out::error2(p, PSTR("nozzle tip not found:"), err.c_str());
+            if (cam && !centreTip("nozzle tip not found:"))
                 return;
-            }
             // tip = reference + d (bottom camera sees the object move) -> reference = head - d
             nX = hx - dx, nY = hy - dy;
             nFromCam = cam;
@@ -873,12 +1114,8 @@ void cmdCal(Port &port, Args &args)
         }
         if (args.is(2, PSTR("PASTE")))
         {
-            float dx = 0, dy = 0;
-            if (cam && !tipInBottomCamera(dx, dy, err))
-            {
-                out::error2(p, PSTR("paste tip not found:"), err.c_str());
+            if (cam && !centreTip("paste tip not found:"))
                 return;
-            }
             // paste tip = head + offset = reference + d -> offset = reference + d - head
             setNum("head1_offset_x", nX + dx - hx);
             setNum("head1_offset_y", nY + dy - hy);
@@ -890,12 +1127,12 @@ void cmdCal(Port &port, Args &args)
         }
         if (args.is(2, PSTR("CAMERA")))
         {
-            float dx = 0, dy = 0; // mark position in the top picture, mm from the centre
+            // d = mark position in the top picture, mm from the centre
             if (!args.is(3, PSTR("MANUAL")))
             {
-                if (!markInTopCamera(dx, dy, err))
+                if (!centreOn(vision::TOP, dx, dy, moves, err))
                 {
-                    out::error2(p, PSTR("mark not found (centre it on the cross and use MANUAL):"), err.c_str());
+                    out::error2(p, PSTR("not found (centre it on the cross by eye and use MANUAL):"), err.c_str());
                     return;
                 }
                 headPosition(hx, hy);
@@ -972,9 +1209,10 @@ void cmdCal(Port &port, Args &args)
 
     if (args.is(1, PSTR("ROTSIGN")))
     {
+        const BottomLight light;
         Frame f0, f1;
         const float *m = settings.cam[vision::BOTTOM].m;
-        if (!vision::available(vision::BOTTOM) || !cams.frameAfter(vision::BOTTOM, millis(), f0, 3000))
+        if (!vision::available(vision::BOTTOM) || !cams.steadyFrame(vision::BOTTOM, f0, 3000))
         {
             out::error(p, PSTR("bottom camera not available"));
             return;
@@ -987,7 +1225,7 @@ void cmdCal(Port &port, Args &args)
             return;
         }
         delay(settings.camSettleMs);
-        cams.frameAfter(vision::BOTTOM, millis(), f1, 3000);
+        cams.steadyFrame(vision::BOTTOM, f1, 3000);
         const PartPx b = detectPart(f1.gray, nx, ny, (int)settings.cam[0].thresh, settings.camBottomInvert, r);
         octoOk("ROTATE 0", err);
         if (!b.ok)

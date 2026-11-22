@@ -1618,7 +1618,7 @@ bool Runner::place(const Part &part)
             !moveMachine(settings.camBottomPos[0], settings.camBottomPos[1], motion.getTargetPosition(Z_AXIS), 0) ||
             !moveMachine(settings.camBottomPos[0], settings.camBottomPos[1], settings.camBottomPos[2], 0) || !sync())
             return false;
-        mosfets.setLight(false, settings.lightBottom / 100.0f);
+        mosfets.bottomLight(true); // part colour (red: pads / leads stand out)
         const bool waited = waitMs(settings.camSettleMs);
         vision::PartResult r;
         const bool seen = waited && vision::measurePart(r);

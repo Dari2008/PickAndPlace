@@ -106,6 +106,8 @@ public:
     }
     int width(const char *t, Font f);
     std::string fit(const std::string &t, Font f, int maxW); // cut with "..." to maxW design px
+    // Breaks t at spaces into lines of at most maxW design px; the last of maxLines lines is cut with "..."
+    std::vector<std::string> wrap(const std::string &t, Font f, int maxW, int maxLines);
     void icon(Icon i, int x, int y, uint16_t c, int arg = 3); // 14 x 14 box
 
     // ---- widgets ------------------------------------------------------------------

@@ -418,7 +418,7 @@ from `core/ctrl/settings/catalog.cpp`; new settings are added there.
 | Setting | Key | Unit | Default | Range | What it does | Stored on |
 |---|---|---|---|---|---|---|
 | E-stop input | `estop_input` |  | 5 | -1 … 7 | DIAG input of the e-stop button, -1 = none | Octopus |
-| Link watchdog | `watchdog_ms` | ms | 2000 | 0 … 60000 | The Octopus stops when the Pi is silent this long while busy (0 = off) | Octopus |
+| Link watchdog | `watchdog_ms` | ms | 2000 | 0 … 60000 | A move stops when the Pi is silent this long (pump and valve stay on; 0 = off) | Octopus |
 | Invert DIAG0 (X stall) | `in_invert_0` |  | on | on / off | Switch to GND = hit; invert for NC switches / StallGuard | Octopus |
 | Invert DIAG1 (X2 stall) | `in_invert_1` |  | on | on / off | Switch to GND = hit; invert for NC switches / StallGuard | Octopus |
 | Invert DIAG2 (Z flag) | `in_invert_2` |  | off | on / off | Switch to GND = hit; invert for NC switches / StallGuard | Octopus |

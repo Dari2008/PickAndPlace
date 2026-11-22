@@ -166,6 +166,29 @@ static void testDetectPart()
     // Nothing there
     Gray e(320, 240, 30);
     CHECK(!detectPart(e, 160, 120, -1, false, 80).ok);
+    // The lit head behind the part: a bright disc (falling off outwards) around a brighter part on the nozzle.
+    // One threshold for the picture would take head + part; the part alone is the rectangle.
+    for (float ang : {12.0f, -25.0f})
+    {
+        Gray h(640, 480, 15);
+        for (int y = 0; y < 480; y++)
+            for (int x = 0; x < 640; x++)
+            {
+                const float d = hypotf(x - 315.0f, y - 245.0f);
+                if (d < 170)
+                    h.at(x, y) = (uint8_t)(165 - d * 0.25f);
+            }
+        fillRotRect(h, 322, 236, 130, 64, ang, 235);
+        for (auto &px : h.px)
+            px = (uint8_t)std::max(0, std::min(255, px + (int)(rng() % 9) - 4));
+        const PartPx hp = detectPart(h, 320, 240, -1, false, 190);
+        CHECK(hp.ok);
+        CHECK_NEAR(hp.cx, 322, 1.5);
+        CHECK_NEAR(hp.cy, 236, 1.5);
+        CHECK_NEAR(hp.angle, ang, 1.0);
+        CHECK_NEAR(hp.w, 130, 5.0);
+        CHECK_NEAR(hp.h, 64, 5.0);
+    }
 }
 
 static void testDetectFeatures()

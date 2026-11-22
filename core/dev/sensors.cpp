@@ -96,7 +96,10 @@ bool Sensors::readBmp()
     return true;
 }
 
-// ---- ADS1115: single-shot, +-4.096 V, 860 SPS -----------------------------------------------
+// ---- ADS1115: single-shot, +-4.096 V, 475 SPS -----------------------------------------------
+// Each channel is converted twice and the second result kept, and the stick uses the median of the
+// last three: the first conversion after a channel switch sometimes still held the other channel
+// (X and Y swapped in ~15 % of the readings), and one bad reading must never become a jog.
 bool Sensors::initAds()
 {
     uint8_t cfg[2];
@@ -105,18 +108,24 @@ bool Sensors::initAds()
 
 bool Sensors::readAds(int ch, int16_t &v)
 {
-    // OS start | MUX AINch vs GND (100 + ch) | PGA 4.096 V | single shot | 860 SPS | comparator off
-    const uint16_t cfg = 0x8000 | ((uint16_t)(4 + ch) << 12) | (1 << 9) | (1 << 8) | (7 << 5) | 3;
+    // OS start | MUX AINch vs GND (100 + ch) | PGA 4.096 V | single shot | 475 SPS | comparator off
+    const uint8_t mux = (uint8_t)(4 + ch);
+    const uint16_t cfg = 0x8000 | ((uint16_t)mux << 12) | (1 << 9) | (1 << 8) | (6 << 5) | 3;
     const uint8_t b[2] = {(uint8_t)(cfg >> 8), (uint8_t)cfg};
     if (!g_bus.writeReg(ADS_ADDR, 0x01, b, 2))
         return false;
-    for (int i = 0; i < 10; i++)
+    std::this_thread::sleep_for(std::chrono::microseconds(2300)); // 2.1 ms at 475 SPS (+10 % clock)
+    bool ready = false;
+    for (int i = 0; i < 10 && !ready; i++)
     {
-        std::this_thread::sleep_for(std::chrono::microseconds(1200));
         uint8_t r[2];
-        if (g_bus.readReg(ADS_ADDR, 0x01, r, 2) && (r[0] & 0x80))
-            break;
+        // done (OS = 1) and really this channel (MUX)
+        ready = g_bus.readReg(ADS_ADDR, 0x01, r, 2) && (r[0] & 0x80) && ((r[0] >> 4) & 7) == mux;
+        if (!ready)
+            std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
+    if (!ready)
+        return false;
     uint8_t r[2];
     if (!g_bus.readReg(ADS_ADDR, 0x00, r, 2))
         return false;
@@ -145,8 +154,13 @@ void Sensors::run()
             for (int ch = 0; ch < 2; ch++)
             {
                 int16_t v;
-                if (readAds(ch, v))
-                    adc_[ch] = v;
+                if (!readAds(ch, v) || !readAds(ch, v))
+                    continue;
+                int16_t *h = adsHist_[ch];
+                h[0] = h[1], h[1] = h[2], h[2] = v;
+                if (adsCount_[ch] < 3)
+                    adsCount_[ch]++;
+                adc_[ch] = adsCount_[ch] < 3 ? v : std::max(std::min(h[0], h[1]), std::min(std::max(h[0], h[1]), h[2]));
             }
         if (bmp_ && millis() - lastBmp >= 40)
         {

@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include <string>
+
 class Mosfets
 {
 public:
@@ -26,8 +28,13 @@ public:
     void setLight(bool top, float f); // camera lights (FAN0 top, bottom = NeoPixel ring + FAN1)
     void topLightIdle();              // top light back to its always-on level (light_top_idle on the Octopus)
     float light(bool top) const;
+    // Bottom ring at light_bottom in the part colour (light_part_rgb) or the calibration colour (light_cal_rgb)
+    void bottomLight(bool part);
 
 
 };
 
 extern Mosfets mosfets;
+
+// "LIGHT bottom <light_bottom> <RRGGBB>" (part: light_part_rgb, else light_cal_rgb; no colour if it isn't RRGGBB)
+std::string bottomLightLine(bool part = false);

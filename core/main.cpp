@@ -7,9 +7,10 @@
  * text protocol on TCP for the website (api/).
  *
  *   pap-core [--data ~/pap-data] [--octopus /dev/ttyACM0|sim] [--sim] [--api-port 7070]
- *            [--api-bind 127.0.0.1] [--no-display] [--console] [--flash [file.bin]]
+ *            [--api-bind 127.0.0.1] [--no-display] [--console] [--flash [file.bin]] [--flash-only [file.bin]]
  *   --sim        Octopus, cameras and sensors simulated (development on a PC)
  *   --flash      flash the Octopus first (default ../firmware/pap-motion.bin, octo/flash.h), then run
+ *   --flash-only flash the Octopus and exit (0 = flashed; upload.bat -flash)
  *   --console    commands from stdin, answers on stdout (service)
  * -----------------------------------------------------------------------------
  */
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
 {
     std::string data = defaultData(), octoDev, apiBind = "127.0.0.1";
     int apiPort = 7070;
-    bool sim = false, display = true, console = false, flash = false;
+    bool sim = false, display = true, console = false, flash = false, flashOnly = false;
     std::string flashFile;
     for (int i = 1; i < argc; i++)
     {
@@ -135,26 +136,30 @@ int main(int argc, char **argv)
             display = false;
         else if (a == "--console")
             console = true;
-        else if (a == "--flash")
+        else if (a == "--flash" || a == "--flash-only")
         {
             flash = true;
+            flashOnly = a == "--flash-only";
             if (i + 1 < argc && argv[i + 1][0] != '-')
                 flashFile = argv[++i];
         }
         else
         {
             std::cerr << "usage: pap-core [--data DIR] [--octopus DEV|sim] [--sim] [--api-port N] [--api-bind ADDR]"
-                         " [--no-display] [--console] [--flash [FILE.bin]]\n";
+                         " [--no-display] [--console] [--flash [FILE.bin]] [--flash-only [FILE.bin]]\n";
             return 2;
         }
     }
     if (flash)
     {
+        bool ok = false;
         if (sim || octoDev == "sim")
             std::cerr << "[flash] not with a simulated Octopus, skipped" << std::endl;
-        else if (!flashOctopus(octoDev.empty() ? findOctopus() : octoDev,
-                               flashFile.empty() ? defaultFirmwarePath() : flashFile))
-            std::cerr << "[flash] FAILED - starting anyway" << std::endl;
+        else if (!(ok = flashOctopus(octoDev.empty() ? findOctopus() : octoDev,
+                                     flashFile.empty() ? defaultFirmwarePath() : flashFile)))
+            std::cerr << (flashOnly ? "[flash] FAILED" : "[flash] FAILED - starting anyway") << std::endl;
+        if (flashOnly)
+            return ok ? 0 : 1;
     }
     if (octoDev.empty())
         octoDev = sim ? "sim" : findOctopus();

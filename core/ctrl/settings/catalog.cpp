@@ -181,6 +181,8 @@ namespace
         b.pi("cam_bottom_invert", "Dark parts on a bright background", "", "");
         b.pi("cam_bottom_rot_sign", "Rotation direction", "", "+1 / -1, set by Calibration > Rotation direction", 0);
         b.pi("light_bottom", "Light brightness", "%", "NeoPixel ring while the bottom camera looks", 0);
+        b.pi("light_part_rgb", "Light colour for parts", "", "RRGGBB: ring colour when it measures a part (FF0000 = red)");
+        b.pi("light_cal_rgb", "Light colour for calibration", "", "RRGGBB: nozzle tip, calibration, live picture (FFFFFF = white)");
         b.pi("cam_bottom_x", "Camera position X", "mm", "Head position with the nozzle over the camera");
         b.pi("cam_bottom_y", "Camera position Y", "mm", "");
         b.pi("cam_bottom_z", "Camera position Z", "mm", "Seesaw Z for the picture");
@@ -300,7 +302,7 @@ namespace
 
         b.group = "Safety & inputs";
         b.oc("estop_input", "E-stop input", "", 5, -1, 7, 0, "DIAG input of the e-stop button, -1 = none");
-        b.oc("watchdog_ms", "Link watchdog", "ms", 2000, 0, 60000, 0, "The Octopus stops when the Pi is silent this long while busy (0 = off)");
+        b.oc("watchdog_ms", "Link watchdog", "ms", 2000, 0, 60000, 0, "A move stops when the Pi is silent this long (pump and valve stay on; 0 = off)");
         static const char *const IN[] = {"X stall", "X2 stall", "Z flag", "Z max", "Feeder sensor", "E-stop", "Gantry stall", "Y stall"};
         for (int i = 0; i < 8; i++)
             b.oc("in_invert_" + std::to_string(i), std::string("Invert DIAG") + std::to_string(i) + " (" + IN[i] + ")", "",

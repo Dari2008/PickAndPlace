@@ -12,6 +12,7 @@
 
 #include "../machine/machine.h"
 #include "widgets.h"
+#include <vector>
 
 // ---- home ----------------------------------------------------------------------
 
@@ -434,29 +435,50 @@ private:
     bool busy_ = false;
 };
 
-// Calibration -> Head offsets: one mark, three steps (CAL HEADS): nozzle tip on it, paste tip on it,
-// top camera above it -> head1_offset (paste tip) and cam_top_off (camera) relative to the nozzle.
+void cameraLights(int cam, bool part = false); // screens_pi.cpp
+
+// Calibration -> Head offsets with the bottom camera (CAL HEADS): nozzle over it -> "Nozzle" finds the
+// tip, centres it, checks, saves the reference; the same with "Paste tip"; then the top camera roughly
+// above the lens -> "Find" centres it and saves, or "By eye" after centring it by hand. Live picture of
+// the camera of the step (green circle = found). Stick: X / Y, held down: Z.
 class HeadOffsetsScreen : public Screen
 {
 public:
-    void enter() override { step_ = 0, busy_ = false, result_.clear(); }
+    void enter() override
+    {
+        step_ = 0, busy_ = false, zJogged_ = false, result_.clear();
+        // INFO opens the cameras with the current settings (they open only when something asks for them)
+        ui.send("CAM bottom INFO", nullptr, false);
+        ui.send("CAM top INFO", nullptr, false);
+        cameraLights(0); // the light of the camera shown (bottom first)
+    }
+    void leave() override { cameraLights(-1); }
     void draw(Gfx &g) override;
     void action(uint16_t id) override;
-    uint8_t liveRects(Rect *r) const override
+    void tick() override;
+    bool press() override;
+    bool hold() override;
+    bool usesStick() const override { return true; }
+    uint8_t animRects(Rect *r) const override
     {
-        r[0] = {16, 60, 288, 24}; // head position
+        r[0] = {0, 25, 216, 156}; // the picture
         return 1;
     }
-    void tick() override { stickJog(-1); }
-    bool usesStick() const override { return true; }
+    uint16_t animMs() const override { return 120; }
+    uint8_t liveRects(Rect *r) const override
+    {
+        r[0] = {0, 182, 320, 36};  // position / result
+        r[1] = {218, 25, 102, 157}; // buttons (busy, done)
+        return 2;
+    }
 
 private:
     void save(const char *cmd, int nextStep);
     int step_ = 0; // 0 nozzle, 1 paste tip, 2 camera, 3 done
-    bool busy_ = false;
+    bool busy_ = false, zJogged_ = false;
     std::string result_;
-    float refX_ = 0, refY_ = 0; // reference from step 1 (mark or bottom camera axis)
-    bool haveRef_ = false, camRef_ = false;
+    bool camRef_ = false;
+    std::vector<uint16_t> px_;
 };
 
 // Every sensor, live: switches, sensorless stall signals, vacuum, nozzle slots, joystick, cameras

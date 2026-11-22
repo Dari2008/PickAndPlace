@@ -368,7 +368,7 @@ bool Nozzles::calibrate(int n, std::string &err)
 {
     if (n < 1 || n > MAX_NOZZLES)
         return err = "no such slot", false;
-    mosfets.setLight(false, settings.lightBottom / 100.0f); // the top light goes dark by itself (Octopus)
+    mosfets.bottomLight(false); // calibration colour; the top light goes dark by itself (Octopus)
     delay(settings.camSettleMs);
     float dx = 0, dy = 0;
     const bool ok = vision::measureNozzle(dx, dy, err);

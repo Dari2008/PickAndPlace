@@ -2,6 +2,8 @@
 #include "screens.h"
 #include "widgets.h"
 #include "../machine/machine.h"
+#include "../hw/input.h"
+#include <cmath>
 
 #include <cstdio>
 #include <cstdlib>
@@ -507,7 +509,8 @@ enum
     PS_ROWS = 10,
     TP_GO = 1,
     TP_SAVE,
-    TP_HOME
+    TP_HOME,
+    TP_LIVE
 };
 
 static std::string posText(const TeachPos &p)
@@ -565,6 +568,8 @@ void TeachPosScreen::draw(Gfx &g)
     }
     g.button(TP_GO, "Go to saved", 16, 120, 140, 44, Kind::Normal, Icon::Move);
     g.button(TP_SAVE, "Save here", 164, 120, 140, 44, Kind::Primary, Icon::Check);
+    if (std::string(pos_.key) == "cam_bottom")
+        g.button(TP_LIVE, "Live bottom camera", 16, 172, 288, 40, Kind::Normal, Icon::Sensor);
     g.hint("joystick: move the head  ·  Save here stores X / Y");
 }
 
@@ -577,6 +582,9 @@ void TeachPosScreen::action(uint16_t id)
     char line[96];
     switch (id)
     {
+    case TP_LIVE:
+        camerasScreen.open(0);
+        break;
     case TP_HOME:
         busy_ = true;
         ui.send("HOME XY", [this](const Reply &r) {
@@ -617,75 +625,104 @@ void TeachPosScreen::action(uint16_t id)
 
 enum
 {
-    HO_SAVE = 1, // by eye: tip on the mark / mark on the cross
-    HO_FIND,     // camera: bottom camera finds the tip, top camera finds the lens
-    HO_GOTO,     // move over the bottom camera
-    HO_ZDOWN,
-    HO_ZUP,
-    HO_BACK,
-    HO_VHOME
+    HO_NOZZLE = 1, // bottom camera finds the nozzle tip, centres it, saves the reference
+    HO_PASTE,      // the same with the paste tip -> head1_offset
+    HO_FIND,       // top camera finds the bottom camera lens, centres it -> cam_top_off
+    HO_EYE,        // lens centred on the cross by hand -> cam_top_off
+    HO_GOTO,       // over the bottom camera (nozzle / paste tip / top camera, whichever is next)
+    HO_VHOME,
+    HO_AGAIN
 };
 
-static const char *const HO_TITLE[] = {"1/3  Nozzle", "2/3  Paste tip", "3/3  Top camera", "Done"};
 static const char *const HO_WHAT[] = {
-    "over the bottom camera: Find tip  -  or on a mark: Save by eye",
-    "same way: over the bottom camera (Z: paste side down) or on the mark",
-    "above the bottom camera lens: Find lens  -  or mark on the cross",
-    "paste tip and top camera are now relative to the nozzle"};
+    "nozzle tip over the bottom camera, then Nozzle",
+    "paste tip over it (hold stick: Z), then Paste tip",
+    "top camera above the lens: Find - or centre + By eye",
+    "paste tip and top camera saved relative to the nozzle"};
+
+void HeadOffsetsScreen::tick()
+{
+    const bool z = input.buttonDown();
+    if (z && fabsf(input.stick().y) >= 0.01f)
+        zJogged_ = true;
+    stickJog(z ? 2 : -1);
+}
+
+bool HeadOffsetsScreen::press()
+{
+    const bool used = zJogged_;
+    zJogged_ = false;
+    return used;
+}
+
+bool HeadOffsetsScreen::hold()
+{
+    const bool used = zJogged_ || fabsf(input.stick().y) >= 0.01f;
+    zJogged_ = false; // no press follows a hold
+    return used;
+}
 
 void HeadOffsetsScreen::draw(Gfx &g)
 {
     g.background();
-    g.titleBar("Head offsets");
-    const MachineStatus st = machine.status();
-    g.card(16, 30, 288, 80);
-    g.text(HO_TITLE[step_], 28, 44, Font::BodyBold, th::TEXT);
-    char t[64];
-    snprintf(t, sizeof(t), "head  X %.2f   Y %.2f   Z %.1f", (double)st.x, (double)st.y, (double)st.z);
-    g.text(t, 28, 72, Font::Body, th::ACCENT);
-    g.text(g.fit(result_.empty() ? HO_WHAT[step_] : result_, Font::Small, 270), 28, 96, Font::Small, th::DIM);
-    if (step_ >= 3)
+    g.titleBar(step_ == 0 ? "Head offsets 1/3: nozzle" : step_ == 1 ? "Head offsets 2/3: paste tip"
+               : step_ == 2 ? "Head offsets 3/3: top camera" : "Head offsets: done");
+    const int cam = step_ == 2 ? 1 : 0; // steps 1, 2: bottom camera; 3: top camera
+    drawCameraPicture(g, step_ >= 3 ? 1 : cam, 4, 28, 212, 152, px_);
+
+    const int x = 222, w = 94, h = 30;
+    auto kind = [this](int s) { return step_ == s ? Kind::Primary : Kind::Normal; };
+    if (busy_)
+        g.text("centring ...", x + w / 2, 100, Font::BodyBold, th::ACCENT, Align::Center);
+    else if (step_ >= 3)
     {
         const bool on = machine.setting("vhome", "0") == "1";
-        g.button(HO_VHOME, on ? "Visual homing: ON" : "Visual homing: off", 16, 122, 288, 40, on ? Kind::Primary : Kind::Normal,
-                 Icon::Home);
-        g.button(HO_BACK, "Again from step 1", 16, 170, 288, 40, Kind::Normal, Icon::Refresh);
-        g.hint(camRef_ ? "reference for visual homing saved" : "visual homing needs the bottom camera way");
-        return;
+        g.button(HO_VHOME, on ? "V.home ON" : "V.home off", x, 28, w, h, on ? Kind::Primary : Kind::Normal, Icon::Home,
+                 Font::Small);
+        g.button(HO_AGAIN, "Again", x, 64, w, h, Kind::Normal, Icon::Refresh, Font::Small);
     }
-    g.button(HO_ZDOWN, "Z -1", 16, 120, 60, 40);
-    g.button(HO_ZUP, "Z +1", 82, 120, 60, 40);
-    g.button(HO_GOTO, "Go to camera", 148, 120, 156, 40, Kind::Normal, Icon::Move);
-    g.button(HO_FIND, busy_ ? "..." : step_ == 2 ? "Find lens" : "Find tip", 16, 168, 140, 44, Kind::Primary, Icon::Sensor);
-    g.button(HO_SAVE, busy_ ? "..." : "Save by eye", 164, 168, 140, 44, Kind::Normal, Icon::Check);
-    g.hint("joystick: move X / Y");
+    else
+    {
+        g.button(HO_NOZZLE, "Nozzle", x, 28, w, h, kind(0), Icon::Sensor, Font::Small);
+        g.button(HO_PASTE, "Paste tip", x, 62, w, h, kind(1), Icon::Sensor, Font::Small);
+        g.button(HO_FIND, "Find cam", x, 96, w, h, kind(2), Icon::Sensor, Font::Small);
+        g.button(HO_EYE, "By eye", x, 130, w, h, Kind::Normal, Icon::Check, Font::Small);
+        g.button(HO_GOTO, "Go to cam", x, 164, w, h - 4, Kind::Normal, Icon::Move, Font::Small);
+    }
+
+    const MachineStatus st = machine.status();
+    char t[64];
+    snprintf(t, sizeof(t), "X %.2f  Y %.2f  Z %.2f", (double)st.x, (double)st.y, (double)st.z);
+    g.text(t, 8, 192, Font::Small, th::TEXT);
+    g.text(g.fit(result_.empty() ? HO_WHAT[step_] : result_, Font::Small, 304), 8, 208, Font::Small,
+           result_.compare(0, 4, "not ") == 0 ? th::WARN : th::ACCENT);
+    g.hint("stick: X / Y  ·  held down: Z");
 }
 
 void HeadOffsetsScreen::save(const char *cmd, int nextStep)
 {
     busy_ = true;
+    result_.clear();
     ui.send(cmd, [this, nextStep](const Reply &r) {
         busy_ = false;
         if (r.ok && !r.records.empty())
         {
             const Record &rec = r.records[0];
-            char t[80];
-            if (nextStep == 1)
-            {
-                refX_ = (float)atof(rec.str("x").c_str()), refY_ = (float)atof(rec.str("y").c_str());
-                haveRef_ = true;
-                snprintf(t, sizeof(t), "reference %s / %s mm", rec.str("x").c_str(), rec.str("y").c_str());
-            }
+            const char *what = nextStep == 1 ? "nozzle centred" : nextStep == 2 ? "paste offset" : "camera offset";
+            char t[96];
+            if (rec.str("moves").empty())
+                snprintf(t, sizeof(t), "%s  %s / %s mm", what, rec.str("x").c_str(), rec.str("y").c_str());
             else
-            {
-                snprintf(t, sizeof(t), "%s  %s / %s mm", nextStep == 2 ? "paste offset" : "camera offset", rec.str("x").c_str(),
-                         rec.str("y").c_str());
-                if (nextStep == 3)
-                    camRef_ = rec.integer("vhome_ref", 0) != 0;
-            }
+                snprintf(t, sizeof(t), "%s  %s / %s mm  (%s moves, %s off)", what, rec.str("x").c_str(), rec.str("y").c_str(),
+                         rec.str("moves").c_str(), rec.str("off").c_str());
+            if (nextStep == 3)
+                camRef_ = rec.integer("vhome_ref", 0) != 0;
             result_ = t;
             step_ = nextStep;
+            cameraLights(step_ == 2 || step_ == 3 ? 1 : 0, false); // light of the camera shown now
         }
+        else
+            result_ = "not saved: " + r.error;
         machine.refreshSettings();
         ui.redraw();
     });
@@ -697,40 +734,46 @@ void HeadOffsetsScreen::action(uint16_t id)
     if (busy_)
         return;
     char line[96];
+    auto num = [](const char *k) { return (float)atof(machine.setting(k, "0").c_str()); };
     switch (id)
     {
-    case HO_ZDOWN:
-    case HO_ZUP:
-        ui.send(id == HO_ZDOWN ? "JOG z=-1" : "JOG z=1");
+    case HO_NOZZLE:
+        save("CAL HEADS NOZZLE CAM", 1);
+        break;
+    case HO_PASTE:
+        if (step_ < 1)
+            ui.toast("Nozzle first", th::WARN);
+        else
+            save("CAL HEADS PASTE CAM", 2);
+        break;
+    case HO_FIND:
+    case HO_EYE:
+        if (step_ < 1)
+            ui.toast("Nozzle first", th::WARN);
+        else
+            save(id == HO_FIND ? "CAL HEADS CAMERA" : "CAL HEADS CAMERA MANUAL", 3);
         break;
     case HO_GOTO:
     {
-        // 1: nozzle over the camera (its calibrated position); 2: paste tip over it (reference - paste
-        // offset so far); 3: top camera over it (reference - camera offset so far)
-        auto num = [](const char *k) { return (float)atof(machine.setting(k, "0").c_str()); };
+        // nozzle over the camera (its calibrated position); then the paste tip / the top camera over
+        // the reference with the offsets so far
         if (step_ == 0)
             snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", num("cam_bottom_x"), num("cam_bottom_y"));
-        else if (!haveRef_)
-        {
-            ui.toast("Do step 1 first", th::WARN);
-            break;
-        }
-        else if (step_ == 1)
-            snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", refX_ - num("head1_offset_x"), refY_ - num("head1_offset_y"));
         else
-            snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", refX_ - num("cam_top_off_x"), refY_ - num("cam_top_off_y"));
+        {
+            const float bx = num("cam_bottom_x"), by = num("cam_bottom_y");
+            if (step_ == 1)
+                snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", bx - num("head1_offset_x"), by - num("head1_offset_y"));
+            else
+                snprintf(line, sizeof(line), "MOVE x=%.3f y=%.3f", bx - num("cam_top_off_x"), by - num("cam_top_off_y"));
+        }
         ui.send(line);
         break;
     }
-    case HO_FIND:
-        save(step_ == 0 ? "CAL HEADS NOZZLE CAM" : step_ == 1 ? "CAL HEADS PASTE CAM" : "CAL HEADS CAMERA", step_ + 1);
-        break;
-    case HO_SAVE:
-        save(step_ == 0 ? "CAL HEADS NOZZLE" : step_ == 1 ? "CAL HEADS PASTE" : "CAL HEADS CAMERA MANUAL", step_ + 1);
-        break;
-    case HO_BACK:
+    case HO_AGAIN:
         step_ = 0;
         result_.clear();
+        cameraLights(0, false);
         break;
     case HO_VHOME:
         ui.send(machine.setting("vhome", "0") == "1" ? "SET vhome 0" : "SET vhome 1", [](const Reply &) {

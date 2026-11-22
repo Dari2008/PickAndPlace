@@ -134,6 +134,23 @@ bool CameraDev::open(const std::string &dev, int w, int h, float exposure, bool 
     return true;
 }
 
+void CameraDev::setExposure(float exposure)
+{
+    exposure_ = exposure;
+    if (fd_ < 0)
+        return;
+    v4l2_control c{};
+    c.id = V4L2_CID_EXPOSURE_AUTO;
+    c.value = exposure < 0 ? V4L2_EXPOSURE_APERTURE_PRIORITY : V4L2_EXPOSURE_MANUAL;
+    xioctl(fd_, VIDIOC_S_CTRL, &c);
+    if (exposure >= 0)
+    {
+        c.id = V4L2_CID_EXPOSURE_ABSOLUTE;
+        c.value = (int)exposure;
+        xioctl(fd_, VIDIOC_S_CTRL, &c);
+    }
+}
+
 void CameraDev::close()
 {
     running_ = false;
@@ -353,6 +370,54 @@ void Cameras::configure(int cam, const std::string &dev, int w, int h, float exp
 }
 
 bool Cameras::available(int cam) { return cam >= 0 && cam <= 1 && dev_[cam].isOpen(); }
+
+float meanLevel(const Gray &g)
+{
+    if (g.empty())
+        return 0;
+    uint64_t sum = 0;
+    size_t n = 0;
+    for (size_t i = 0; i < g.px.size(); i += 4, n++)
+        sum += g.px[i];
+    return n ? (float)sum / n : 0;
+}
+
+void Cameras::setExposure(int cam, float exposure)
+{
+    if (cam < 0 || cam > 1)
+        return;
+    std::lock_guard<std::mutex> l(m_);
+    cfgExp_[cam] = exposure;
+    dev_[cam].setExposure(exposure);
+}
+
+bool Cameras::steadyFrame(int cam, Frame &out, int timeoutMs)
+{
+    if (!frameAfter(cam, millis(), out, timeoutMs))
+        return false;
+    bool autoExp;
+    {
+        std::lock_guard<std::mutex> l(m_);
+        autoExp = cfgExp_[cam] < 0 && !dev_[cam].simulated();
+    }
+    if (!autoExp)
+        return true;
+    // brightness change below 1 / 255 twice in a row = the automatic exposure has settled
+    const uint32_t t0 = millis();
+    float prev = meanLevel(out.gray);
+    int calm = 0;
+    while (calm < 2 && millis() - t0 < STEADY_MS)
+    {
+        Frame f;
+        if (!frameAfter(cam, out.ms, f, 1000))
+            break; // keep the last one
+        const float m = meanLevel(f.gray);
+        calm = fabsf(m - prev) < 1.0f ? calm + 1 : 0;
+        prev = m;
+        out = f;
+    }
+    return true;
+}
 
 bool Cameras::frameAfter(int cam, uint32_t ms, Frame &out, int timeoutMs)
 {

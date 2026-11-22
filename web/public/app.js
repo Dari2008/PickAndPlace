@@ -123,6 +123,71 @@ function modal(html) {
   return $('#modalBody');
 }
 function closeModal() { $('#modal').hidden = true; }
+
+// Live camera window: stays in the corner (also over pop-ups) while you jog, teach or measure.
+// Each frame is one GET /api/cam; the next is asked for when the last arrived.
+const liveCam = { cam: null, run: 0, url: null };
+function openLive(cam) {
+  let box = document.getElementById('live');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'live';
+    box.className = 'live card';
+    box.innerHTML = `<div class="row spread"><b id="liveTitle"></b><span class="row">
+      <button class="small" id="liveTop">Top</button><button class="small" id="liveBottom">Bottom</button>
+      <button class="small" id="liveClose" title="Close">✕</button></span></div>
+      <img id="liveImg" alt=""><div id="liveMsg" class="dim"></div>`;
+    document.body.appendChild(box);
+    $('#liveTop', box).onclick = () => openLive('top');
+    $('#liveBottom', box).onclick = () => openLive('bottom');
+    $('#liveClose', box).onclick = closeLive;
+  }
+  box.hidden = false;
+  liveCam.cam = cam;
+  camLights(cam);
+  $('#liveTitle', box).textContent = cam === 'top' ? 'Top camera' : 'Bottom camera';
+  $('#liveTop', box).className = 'small' + (cam === 'top' ? ' primary' : '');
+  $('#liveBottom', box).className = 'small' + (cam === 'bottom' ? ' primary' : '');
+  const run = ++liveCam.run;
+  (async () => {
+    while (liveCam.run === run) {
+      try {
+        const r = await fetch(`/api/cam?cam=${cam}&t=${Date.now()}`, { cache: 'no-store' });
+        if (liveCam.run !== run) break;
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          $('#liveMsg', box).textContent = 'no picture' + (j.error ? ': ' + j.error : '') + ' (machine busy?)';
+          await new Promise((res) => setTimeout(res, 1000));
+          continue;
+        }
+        const url = URL.createObjectURL(await r.blob());
+        if (liveCam.run !== run) { URL.revokeObjectURL(url); break; }
+        $('#liveImg', box).src = url;
+        if (liveCam.url) URL.revokeObjectURL(liveCam.url);
+        liveCam.url = url;
+        $('#liveMsg', box).textContent = '';
+        await new Promise((res) => setTimeout(res, 120));
+      } catch {
+        $('#liveMsg', box).textContent = 'no connection';
+        await new Promise((res) => setTimeout(res, 1000));
+      }
+    }
+  })();
+}
+// Light of the camera being looked at: bottom ring (calibration colour; part: part colour), top light at
+// light_top, or none (ring off, top light back to idle)
+function camLights(cam, part = false) {
+  if (cam === 'bottom') return send({ t: 'cmd', line: part ? 'LIGHT bottom PART' : 'LIGHT bottom ON' });
+  send({ t: 'cmd', line: 'LIGHT bottom OFF' });
+  return send({ t: 'cmd', line: cam === 'top' ? 'LIGHT top ON' : 'LIGHT top IDLE' });
+}
+
+function closeLive() {
+  camLights(null);
+  liveCam.run++;
+  const box = document.getElementById('live');
+  if (box) box.hidden = true;
+}
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
 
 function confirmBox(text, okLabel = 'OK', danger = false) {
@@ -428,7 +493,8 @@ async function editFeeder(n) {
         <span class="dim">(0 = degrees:</span><input id="eAdv" type="number" step="0.1" value="${esc(f.advance)}" style="width:80px"><span class="dim">°)</span>
         <button class="small" id="eTest">Test advance</button></span>
       <span>QR code</span><span class="row"><span class="mono">${esc(f.tag) || '–'}</span><button class="small" id="eQr">Read QR</button>
-        <button class="small" id="eQrTeach" title="Jog the top camera onto this feeder's QR code first">Teach QR position</button></span>
+        <button class="small" id="eQrTeach" title="Jog the top camera onto this feeder's QR code first">Teach QR position</button>
+        <button class="small" onclick="openLive('top')">Live top camera</button></span>
       <span>Next pocket</span><span class="row"><input id="eNext" type="number" min="1" value="${esc(f.next)}"> <button class="small" id="eReset">Reset to 1</button></span>
     </div>
     <div class="row" style="justify-content:flex-end;margin:12px 0"><button class="primary" id="eSave">Save</button></div>
@@ -437,7 +503,7 @@ async function editFeeder(n) {
     ${pockets.map((p) => `<tr data-i="${p.i}"><td>${p.i}</td><td><input type="number" step="0.01" value="${p.x}" data-k="x"></td><td><input type="number" step="0.01" value="${p.y}" data-k="y"></td>
       <td class="actions"><button class="small" data-a="set">Save</button> <button class="small" data-a="here">Set to head</button> <button class="small" data-a="goto">Go there</button> <button class="small" data-a="del">Delete</button></td></tr>`).join('')}
     </tbody></table>
-    <div class="row" style="margin-top:10px"><button class="small" id="pHere">Add pocket at the head position</button>
+    <div class="row" style="margin-top:10px"><button class="small" onclick="openLive('top')">Live top camera</button><button class="small" id="pHere">Add pocket at the head position</button>
       <input type="number" step="0.01" id="pX" placeholder="X"><input type="number" step="0.01" id="pY" placeholder="Y"><button class="small" id="pAdd">Add</button></div>`);
   const reopen = () => editFeeder(n);
   $('#eSave', m).onclick = async () => {
@@ -812,6 +878,7 @@ function renderCalibrate() {
       fields(['head2_reach', 'head1_reach', 'head1_offset_x', 'head1_offset_y', 'pick_height', 'z_home'])),
 
     sec(3, 'bottom', 'Bottom camera', 'Before the top camera. Light on, nozzle tip (no part) roughly above the bottom camera, at the height it looks at parts.',
+      stepRow('Live picture', 'A small window with the camera picture that stays open while you jog and calibrate.', `<button class="small" onclick="openLive('bottom')">Live bottom camera</button>`) +
       stepRow('Calibrate', 'The head moves around by a few mm: scale, skew, rotation centre and the look position are measured.', btn('calBottom', 'Calibrate', 'primary')) +
       stepRow('Checkerboard', 'After Calibrate: <a href="/checkerboard.html" target="_blank">print a checkerboard</a> (square size = cal_grid), lay it face down over the camera, sharp and filling the picture. One picture: lens distortion and exact scale.', btn('calBottomGrid', 'Checkerboard', 'primary')) +
       stepRow('Lens without checkerboard', 'Instead of the checkerboard: tip still in the picture centre, it moves the tip to 9 places across the picture.', btn('calBottomLens', 'Lens')) +
@@ -820,6 +887,7 @@ function renderCalibrate() {
       fields(['cal_grid', 'cam_bottom_x', 'cam_bottom_y', 'cam_bottom_z', 'cam_bottom_cx', 'cam_bottom_cy', 'cam_bottom_rot_sign', 'cam_bottom_m00', 'cam_bottom_m01', 'cam_bottom_m10', 'cam_bottom_m11', 'cam_bottom_k1', 'cam_bottom_k2'])),
 
     sec(4, 'top', 'Top camera', 'Best with a printed checkerboard; a mark on the bed (fiducial, pen dot) works too. Light on.',
+      stepRow('Live picture', 'A small window with the camera picture that stays open while you jog and calibrate.', `<button class="small" onclick="openLive('top')">Live top camera</button>`) +
       stepRow('Checkerboard', '<a href="/checkerboard.html" target="_blank">print a checkerboard</a> (square size = cal_grid), lay it flat on the bed under the camera, sharp and filling the picture. Lens, scale and skew from the squares, rotation from two small moves.', btn('calTopGrid', 'Checkerboard', 'primary')) +
       stepRow('On a mark', 'Instead of the checkerboard: camera centred above a mark, the head moves around it (scale, skew).', btn('calTop', 'Calibrate')) +
       stepRow('Lens on a mark', 'After "On a mark", mark still in the picture centre: it lands at 9 places across the picture.', btn('calTopLens', 'Lens')) +
@@ -858,7 +926,7 @@ function renderCalibrate() {
       fields(['syringe_d', 'paste_speed', 'paste_retract'])),
 
     sec(9, 'feeders', 'Feeders and positions', 'Where the top camera finds the feeders\' QR codes, and where rejected parts are dropped.',
-      stepRow('QR code position', 'Jog the top camera onto one feeder\'s QR code.', `<select id="fQr"></select> ${btn('qrTeach', 'Teach')} ${btn('qrRead', 'Read QR')}`) +
+      stepRow('QR code position', 'Jog the top camera onto one feeder\'s QR code.', `<select id="fQr"></select> ${btn('qrTeach', 'Teach')} ${btn('qrRead', 'Read QR')} <button class="small" onclick="openLive('top')">Live top camera</button>`) +
       stepRow('Reject position', 'Nozzle above the reject bin.', btn('rejectHere', 'Reject = here')) +
       fields(['feeder_qr_x0', 'feeder_qr_y0', 'feeder_qr_dx', 'feeder_qr_dy', 'reject_x', 'reject_y'])),
 
@@ -887,10 +955,12 @@ function renderCalibrate() {
       stepRow('Save', 'The length minus the pull-off becomes the travel (soft limit).', btn('flSave', 'Save as travel')) +
       fields(['travel_x', 'travel_y', 'travel_e1'])),
 
-    sec(13, 'offsets', 'Head offsets', 'Nozzle, paste tip and top camera on one reference point: the bottom camera (finds the tips by itself) or a mark on the bed (by eye). Nozzle first.',
-      stepRow('Nozzle', 'Nozzle tip over the bottom camera (or on the mark), at its working height.', btn('hoNozzleCam', 'With bottom camera', 'primary') + btn('hoNozzle', 'On the mark')) +
-      stepRow('Paste tip', 'Paste tip over the bottom camera (or on the same mark).', btn('hoPasteCam', 'With bottom camera', 'primary') + btn('hoPaste', 'On the mark')) +
-      stepRow('Top camera', 'Top camera above the bottom camera lens (or the mark): it finds it; "By eye" when the mark sits on the cross.', btn('hoCamera', 'Find it', 'primary') + btn('hoCameraManual', 'By eye')) +
+    sec(13, 'offsets', 'Head offsets', 'Nozzle, paste tip and top camera on one reference point, the bottom camera. Each button finds the tip (or the lens), moves it onto the cross, looks again until it sits there, and saves. The picture on the left switches to the camera of the step; the green circle is what it found. Nozzle first.',
+      stepRow('Exposure', 'Fix: the camera adjusts with its light on, then that brightness is kept as a fixed exposure (every picture the same). Auto: adjusts each picture (it waits until the picture stands still).',
+        btn('expBottom', 'Fix bottom') + btn('expTop', 'Fix top') + btn('expAuto', 'Both auto')) +
+      stepRow('Nozzle', 'Nozzle tip roughly over the bottom camera, at its working height. Two small test moves first: it learns which way the picture moves.', btn('hoNozzleCam', 'Nozzle', 'primary') + btn('hoNozzle', 'On a mark (by eye)')) +
+      stepRow('Paste tip', 'Paste tip roughly over the bottom camera (Z+ brings it down).', btn('hoPasteCam', 'Paste tip', 'primary') + btn('hoPaste', 'On the mark (by eye)')) +
+      stepRow('Top camera', 'Top camera roughly above the bottom camera lens: Find centres it. Not found: centre the lens on the cross by hand and use By eye.', btn('hoCamera', 'Find', 'primary') + btn('hoCameraManual', 'By eye')) +
       fields(['head1_offset_x', 'head1_offset_y', 'cam_top_off_x', 'cam_top_off_y', 'vhome', 'vhome_ref_x', 'vhome_ref_y', 'vhome_max'])),
 
     sec(14, 'display', 'Touch screen', 'The machine display\'s touch.',
@@ -922,6 +992,8 @@ function renderCalibrate() {
   const img = $('#kImg');
   const pickCam = (c) => {
     cam = renderCalibrate.cam = c;
+    bottomPart = false;
+    camLights(c);
     document.querySelectorAll('[data-cam]').forEach((b) => b.classList.toggle('primary', b.dataset.cam === c));
     updateCalibrate();
   };
@@ -937,12 +1009,19 @@ function renderCalibrate() {
   $('#kHalt').onclick = () => cmd('HALT');
   $('#kHome').onclick = () => cmd('HOME');
   $('#kLevel').onclick = () => cmd('MOVE z=0 speed=5');
-  $('#kLight').onclick = () => cmd(`LIGHT ${cam} ${+(state.status['light_' + cam] || 0) > 0 ? 'OFF' : 'ON'}`);
+  // bottom: off -> calibration colour -> part colour -> off; top: on / off
+  let bottomPart = false;
+  $('#kLight').onclick = () => {
+    const on = +(state.status['light_' + cam] || 0) > 0;
+    if (cam === 'bottom' && on && !bottomPart) { bottomPart = true; return cmd('LIGHT bottom PART'); }
+    bottomPart = false;
+    return cmd(`LIGHT ${cam} ${on ? 'OFF' : 'ON'}`);
+  };
   pickCam(cam);
   const frameLoop = async () => {
-    if (show.gen !== gen) return;
+    if (show.gen !== gen) return camLights(null); // page left: lights back
     const r = await send({ t: 'cmd', line: `CAM ${cam} FRAME w=480 q=65 cross=1` });
-    if (show.gen !== gen) return;
+    if (show.gen !== gen) return camLights(null);
     const err = $('#kCamErr');
     if (r.ok && r.records[0] && r.records[0].f.jpeg) { img.src = 'data:image/jpeg;base64,' + r.records[0].f.jpeg; err.textContent = ''; }
     else if (!r.ok) err.textContent = 'camera: ' + r.error;
@@ -1009,6 +1088,8 @@ function renderCalibrate() {
     }
     return pairs.map(([k, v]) => `${k} = ${v}`).join(' · ');
   };
+  // side panel picture to this camera (head offsets: watch what it finds)
+  const showCam = (c) => { const b = document.querySelector(`[data-cam="${c}"]`); if (b) b.click(); };
   const run = async (line, confirmText) => {
     if (confirmText && !(await confirmBox(confirmText, 'Start'))) return null;
     const r = await cmd(line);
@@ -1060,12 +1141,15 @@ function renderCalibrate() {
       if (!mem.fl) throw new Error('find the length first');
       return set([['travel_' + mem.fl.ax, mem.fl.suggest]]);
     },
-    hoNozzleCam: () => run('CAL HEADS NOZZLE CAM'),
+    expBottom: () => (showCam('bottom'), run('CAL EXPOSURE BOTTOM')),
+    expTop: () => (showCam('top'), run('CAL EXPOSURE TOP')),
+    expAuto: async () => (await run('CAL EXPOSURE BOTTOM AUTO')) + ' · ' + (await run('CAL EXPOSURE TOP AUTO')),
+    hoNozzleCam: () => (showCam('bottom'), run('CAL HEADS NOZZLE CAM')),
     hoNozzle: () => run('CAL HEADS NOZZLE'),
-    hoPasteCam: () => run('CAL HEADS PASTE CAM'),
+    hoPasteCam: () => (showCam('bottom'), run('CAL HEADS PASTE CAM')),
     hoPaste: () => run('CAL HEADS PASTE'),
-    hoCamera: () => run('CAL HEADS CAMERA'),
-    hoCameraManual: () => run('CAL HEADS CAMERA MANUAL'),
+    hoCamera: () => (showCam('top'), run('CAL HEADS CAMERA')),
+    hoCameraManual: () => (showCam('top'), run('CAL HEADS CAMERA MANUAL')),
     touchCal: async () => {
       const r = await cmd('SCREEN CALIBRATE');
       if (!r.ok) throw new Error(r.error);

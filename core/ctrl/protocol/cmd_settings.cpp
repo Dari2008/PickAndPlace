@@ -114,6 +114,9 @@ void cmdSet(Port &port, Args &args)
         return;
     }
     settings.applySpeeds();
+    // the bottom ring is on: show the new brightness right away
+    if (strcmp(key, "light_bottom") == 0 && octo.status().lightBottom > 0)
+        octo.call("LIGHT bottom " + std::to_string((int)settings.lightBottom));
     if (!settings.save())
     {
         out::error(port.io, PSTR("set, but can't save settings.txt"));

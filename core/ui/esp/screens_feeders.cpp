@@ -130,7 +130,7 @@ void FeederScreen::draw(Gfx &g)
         return;
     }
     char t[32];
-    std::vector<Row> rows(8);
+    std::vector<Row> rows(9);
     rows[0].label = "Pockets", rows[0].value = std::to_string(f_.pocketCount), rows[0].chev = true;
     rows[1].label = "Next pocket";
     rows[1].value = f_.pocketCount ? std::to_string(f_.next) + " of " + std::to_string(f_.pocketCount) : "-";
@@ -144,7 +144,8 @@ void FeederScreen::draw(Gfx &g)
     rows[4].label = "Part ID", rows[4].value = f_.part.empty() ? "-" : f_.part, rows[4].sub = "from the QR code · tap to read it now";
     rows[5].label = "Go to feeder", rows[5].sub = "E1 drives to the feeder";
     rows[6].label = "Test advance", rows[6].icon = Icon::Play, rows[6].iconColor = th::ACCENT;
-    rows[7].label = "Delete feeder", rows[7].icon = Icon::Trash, rows[7].iconColor = th::BAD, rows[7].labelColor = th::BAD;
+    rows[7].label = "Live top camera", rows[7].icon = Icon::Sensor, rows[7].sub = "QR code and pockets in the picture", rows[7].chev = true;
+    rows[8].label = "Delete feeder", rows[8].icon = Icon::Trash, rows[8].iconColor = th::BAD, rows[8].labelColor = th::BAD;
     list_.draw(g, FD_ROWS, rows, 25, 35);
 }
 
@@ -214,6 +215,9 @@ void FeederScreen::action(uint16_t id)
         });
         break;
     case 7:
+        camerasScreen.open(1);
+        break;
+    case 8:
         dialog.open("Delete feeder " + num2(f_.num) + "?", "/feeders/feeder" + num2(f_.num) + ".txt is removed", "from the SD card.",
                     {{"No", Kind::Normal, nullptr},
                      {"Delete", Kind::Danger, [n] {

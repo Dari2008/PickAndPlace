@@ -35,6 +35,7 @@ public:
     ~CameraDev() { close(); }
     bool open(const std::string &dev, int w, int h, float exposure, bool simulate, int simKind);
     void close();
+    void setExposure(float exposure); // -1 = auto; while running
     bool isOpen() const { return running_; }
     bool frameAfter(uint32_t ms, Frame &out, int timeoutMs);
     bool latest(Frame &out);
@@ -90,6 +91,10 @@ public:
     void setSimulation(bool on) { sim_ = on; }
     bool available(int cam);
     bool frameAfter(int cam, uint32_t ms, Frame &out, int timeoutMs = 2000);
+    // A new frame; with automatic exposure it waits (up to STEADY_MS more) until the brightness stops
+    // changing, so a light just switched on or a new scene doesn't give a dark / washed-out picture.
+    bool steadyFrame(int cam, Frame &out, int timeoutMs = 2500);
+    void setExposure(int cam, float exposure); // -1 = auto, without reopening (CAL EXPOSURE)
     bool latest(int cam, Frame &out);
     // JPEG of the newest frame, scaled to maxWidth, optional crosshair at the nozzle / image centre.
     // With overlay, the last detection (setOverlay) is drawn while it is younger than OVERLAY_MS.
@@ -118,5 +123,7 @@ extern Cameras cams;
 
 // RGB from YUYV (for JPEGs); gray-only frames are expanded
 std::vector<uint8_t> frameRgb(const Frame &f, int w, int h);
+float meanLevel(const Gray &g); // average brightness 0..255 (every 4th pixel)
+#define STEADY_MS 2000
 std::string encodeJpeg(const std::vector<uint8_t> &rgb, int w, int h, int quality);
 std::string encodeJpegGray(const Gray &g, int quality);

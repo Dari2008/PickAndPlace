@@ -97,6 +97,8 @@ public:
     float visionMaxAngle;  // deg
     float fidDiameter, fidSearch, pocketSearch;
     uint8_t lightTop, lightBottom; // %
+    char lightPartRgb[TEXT_SETTING_LEN]; // bottom ring colour when it measures a part (RRGGBB)
+    char lightCalRgb[TEXT_SETTING_LEN];  // ... for the nozzle tip, calibration, live picture
     float calStep;                 // mm moved during a camera calibration
     float calGrid;                 // square size of the printed checkerboard, mm
     uint8_t setupStep;             // Menu > Setup: the step reached

@@ -144,7 +144,8 @@ enum
     T_PLUS1,
     T_STEP = 20, // + index
     T_CANCEL = 30,
-    T_SAVE
+    T_SAVE,
+    T_LIVE
 };
 
 void TeachScreen::openXY(const std::string &title, std::function<void(float, float)> onSave)
@@ -217,8 +218,17 @@ void TeachScreen::draw(Gfx &g)
     }
     for (int i = 0; i < 4; i++)
         g.button(T_STEP + i, TEACH_LABELS[i], 8 + i * 78, 152, 70, 30, i == step_ ? Kind::Primary : Kind::Normal, Icon::None, Font::Small);
-    g.button(T_CANCEL, "Cancel", 8, 192, 148, 38);
-    g.button(T_SAVE, "Save here", 164, 192, 148, 38, Kind::Primary, Icon::Check);
+    if (e1_)
+    {
+        g.button(T_CANCEL, "Cancel", 8, 192, 148, 38);
+        g.button(T_SAVE, "Save here", 164, 192, 148, 38, Kind::Primary, Icon::Check);
+    }
+    else
+    {
+        g.button(T_CANCEL, "Cancel", 8, 192, 92, 38);
+        g.button(T_LIVE, "Live camera", 106, 192, 100, 38, Kind::Normal, Icon::Sensor, Font::Small);
+        g.button(T_SAVE, "Save here", 212, 192, 100, 38, Kind::Primary, Icon::Check);
+    }
 }
 
 void TeachScreen::action(uint16_t id)
@@ -233,6 +243,8 @@ void TeachScreen::action(uint16_t id)
         jog(1, id == T_PLUS1 ? 1 : -1);
     else if (id == T_CANCEL)
         ui.pop();
+    else if (id == T_LIVE)
+        camerasScreen.open(1);
     else if (id == T_SAVE)
     {
         // Wait until the moves are done, then read the exact position.

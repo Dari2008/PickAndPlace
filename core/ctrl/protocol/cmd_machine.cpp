@@ -170,8 +170,7 @@ void cmdJogV(Port &port, Args &)
 {
     if (commands::refuseIfBusy(port))
         return;
-    octo.post(commands::currentLine());
-    motion.invalidateTargets();
+    commands::jogVelocity(commands::currentLine());
     out::ok(port.io);
 }
 void cmdE1(Port &port, Args &args)
@@ -254,7 +253,23 @@ void cmdOutputs(Port &port, Args &) { forward(port, "OUTPUTS"); }
 // PUMP ON uses pump_power of the Octopus; the rest are passed on as they are
 void cmdPump(Port &port, Args &) { forward(port, commands::currentLine()); }
 void cmdValve(Port &port, Args &) { forward(port, commands::currentLine()); }
-void cmdLight(Port &port, Args &) { forward(port, commands::currentLine()); }
+// LIGHT bottom ON | PART: at the brightness of light_bottom (the board alone would take 100 %), in the
+// calibration colour (light_cal_rgb) or the part colour (light_part_rgb). LIGHT top ON: at light_top.
+void cmdLight(Port &port, Args &args)
+{
+    if (args.count() >= 3 && strcasecmp(args[1], "bottom") == 0 &&
+        (strcasecmp(args[2], "ON") == 0 || strcasecmp(args[2], "PART") == 0))
+    {
+        forward(port, bottomLightLine(strcasecmp(args[2], "PART") == 0));
+        return;
+    }
+    if (args.count() >= 3 && strcasecmp(args[1], "top") == 0 && strcasecmp(args[2], "ON") == 0)
+    {
+        forward(port, "LIGHT top " + std::to_string((int)settings.lightTop));
+        return;
+    }
+    forward(port, commands::currentLine());
+}
 
 void cmdTmc(Port &port, Args &)
 {

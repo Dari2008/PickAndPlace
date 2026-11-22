@@ -54,7 +54,7 @@ namespace vision
     {
         configure(BOTTOM);
         Frame f;
-        if (!cams.frameAfter(BOTTOM, millis(), f, 2500))
+        if (!cams.steadyFrame(BOTTOM, f, 2500))
         {
             err = "bottom camera: " + (cams.error(BOTTOM).empty() ? std::string("no picture") : cams.error(BOTTOM));
             return false;
@@ -90,7 +90,7 @@ namespace vision
         for (int attempt = 0; attempt < 3 && !found; attempt++)
         {
             Frame f;
-            if (!cams.frameAfter(TOP, millis(), f, 2500))
+            if (!cams.steadyFrame(TOP, f, 2500))
             {
                 err = "top camera: " + (cams.error(TOP).empty() ? std::string("no picture") : cams.error(TOP));
                 break;
@@ -144,7 +144,7 @@ namespace vision
         r = PartResult();
         configure(BOTTOM);
         Frame f;
-        if (!cams.frameAfter(BOTTOM, millis(), f, 2500))
+        if (!cams.steadyFrame(BOTTOM, f, 2500))
         {
             r.error = "bottom camera: " + (cams.error(BOTTOM).empty() ? std::string("no picture") : cams.error(BOTTOM));
             return false;
@@ -174,7 +174,7 @@ namespace vision
     {
         configure(TOP);
         Frame f;
-        if (!cams.frameAfter(TOP, millis(), f, 2500))
+        if (!cams.steadyFrame(TOP, f, 2500))
         {
             err = "top camera: " + (cams.error(TOP).empty() ? std::string("no picture") : cams.error(TOP));
             return false;

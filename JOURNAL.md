@@ -3,7 +3,7 @@ title: "Pick And Place Machine"
 github: "https://github.com/Dari2008/PickAndPlace"
 description: "I'm Building a Pick and Place machine for PCB assembly from a broken Creality 10S. Its going to have Parts Feeder Fiducial alignment as well as part alignment and a lot more cool features."
 created_at: "2026-11-19"
-total_time: "124h 30m"
+total_time: "118h 30m"
 ---
 
 # September 15, 2026: Choosing the Controller (15.9.26)
@@ -83,15 +83,12 @@ Luckily I could reuse quite a lot of the motor mounts from the Creality 10S.
 
 That saved me a lot of time, since I didn't have to design and print new ones for every axis.
 
-**Total time spent: 6h**
-
-# October 11, 2026: Squaring the Frame (11.10.26)
-
 All the profiles are joined with M5 screws. I had to check a lot that everything is square, otherwise the gantry would get stuck at one end.
 
 I measured the diagonals of the frame to see if it is square before tightening all the screws.
 
 **Total time spent: 6h**
+
 
 # October 12, 2026: The Head / Paste extruder (12.10.26)
 

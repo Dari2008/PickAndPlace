@@ -19,6 +19,26 @@ static int thresholdFor(const Gray &g, int thresh)
     return thresh >= 0 ? thresh : otsu(g);
 }
 
+// The blob at the nozzle for one threshold: not touching the border, centre within maxRadiusPx, nearest first
+static bool blobAtNozzle(const Gray &g, int t, bool dark, float nx, float ny, float maxRadiusPx, Blob &out, bool &any)
+{
+    const std::vector<Blob> blobs = findBlobs(g, t, dark, 30);
+    any = any || !blobs.empty();
+    const Blob *best = nullptr;
+    float bestD = 1e30f;
+    for (const Blob &b : blobs)
+    {
+        if (b.touchesBorder)
+            continue;
+        const float d = hypotf(b.cx - nx, b.cy - ny);
+        if (d <= maxRadiusPx && d < bestD)
+            bestD = d, best = &b;
+    }
+    if (best)
+        out = *best;
+    return best != nullptr;
+}
+
 PartPx detectPart(const Gray &g, float nx, float ny, int thresh, bool dark, float maxRadiusPx)
 {
     PartPx r;
@@ -27,30 +47,77 @@ PartPx detectPart(const Gray &g, float nx, float ny, int thresh, bool dark, floa
         r.error = "no image";
         return r;
     }
-    const int t = thresholdFor(g, thresh);
-    const std::vector<Blob> blobs = findBlobs(g, t, dark, 30);
-    const Blob *best = nullptr;
-    float bestD = 1e30f;
-    for (const Blob &b : blobs)
+    Blob best;
+    bool found = false, any = false;
+    if (thresh >= 0)
+        found = blobAtNozzle(g, thresh, dark, nx, ny, maxRadiusPx, best, any);
+    else
     {
-        if (b.touchesBorder)
-            continue;
-        // Contains or is near the nozzle centre
-        const float d = hypotf(b.cx - nx, b.cy - ny);
-        if (d > maxRadiusPx)
-            continue;
-        if (d < bestD)
+        // Automatic: the ring light also lights the head behind the part, and with one threshold for the picture head
+        // and part become one blob. So try thresholds from the darkest to the brightest grey and keep the blob that is
+        // most like a rectangle (fills its smallest enclosing rectangle) and stays the same over neighbouring
+        // thresholds (sharp edges): that is the part, not the round, softly lit head around it.
+        int hist[256] = {};
+        for (uint8_t v : g.px)
+            hist[v]++;
+        const int total = (int)g.px.size();
+        int lo = 0, hi = 255, acc = 0;
+        for (int v = 0; v < 256; v++)
+            if ((acc += hist[v]) >= total / 50)
+            {
+                lo = v;
+                break;
+            }
+        acc = 0;
+        for (int v = 255; v >= 0; v--)
+            if ((acc += hist[v]) >= total / 200)
+            {
+                hi = v;
+                break;
+            }
+        const int N = 32;
+        struct Try
         {
-            bestD = d;
-            best = &b;
+            bool ok = false;
+            Blob b;
+            float fill = 0;
+        };
+        std::vector<Try> tries(N);
+        if (hi - lo >= 20)
+            for (int i = 0; i < N; i++)
+            {
+                const int t = lo + (hi - lo) * (i + 1) / (N + 1);
+                Try &tr = tries[i];
+                tr.ok = blobAtNozzle(g, t, dark, nx, ny, maxRadiusPx, tr.b, any);
+                if (tr.ok)
+                {
+                    const RotRect rr = minAreaRect(tr.b);
+                    tr.fill = rr.w * rr.h > 0 ? std::min(1.0f, tr.b.area / (rr.w * rr.h)) : 0;
+                }
+            }
+        float bestScore = -1e9f;
+        for (int i = 0; i < N; i++)
+        {
+            const Try &tr = tries[i];
+            if (!tr.ok)
+                continue;
+            // area change over the neighbouring thresholds, relative (0 = perfectly stable)
+            const int a0 = i > 0 && tries[i - 1].ok ? tries[i - 1].b.area : 0;
+            const int a1 = i + 1 < N && tries[i + 1].ok ? tries[i + 1].b.area : 0;
+            const float change = std::min(1.0f, fabsf((float)(a0 - a1)) / (float)tr.b.area);
+            const float score = tr.fill - 0.5f * change;
+            if (score > bestScore)
+                bestScore = score, best = tr.b, found = true;
         }
+        if (!found)
+            found = blobAtNozzle(g, otsu(g), dark, nx, ny, maxRadiusPx, best, any);
     }
-    if (!best)
+    if (!found)
     {
-        r.error = blobs.empty() ? "no part in the picture" : "no part near the nozzle";
+        r.error = !any ? "no part in the picture" : "no part near the nozzle";
         return r;
     }
-    const RotRect rr = minAreaRect(*best);
+    const RotRect rr = minAreaRect(best);
     r.ok = true;
     r.cx = rr.cx;
     r.cy = rr.cy;

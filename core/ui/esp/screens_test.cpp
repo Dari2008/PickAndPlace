@@ -134,13 +134,14 @@ void TestingScreen::draw(Gfx &g)
 {
     g.background();
     g.titleBar("Testing");
-    std::vector<Row> rows(6);
+    std::vector<Row> rows(7);
     rows[0].icon = Icon::Pump, rows[0].label = "Outputs", rows[0].sub = "pump, valve, fans", rows[0].chev = true;
     rows[1].icon = Icon::Sensor, rows[1].label = "Sensors", rows[1].sub = "switches, stall, vacuum, nozzles, joystick", rows[1].chev = true;
     rows[2].icon = Icon::Sensor, rows[2].label = "Read a QR code", rows[2].sub = "top camera, where it looks now";
-    rows[3].icon = Icon::Motor, rows[3].label = "Test motors", rows[3].sub = "X Y Z E0 E1 ROT PASTE by degrees", rows[3].chev = true;
-    rows[4].icon = Icon::Home, rows[4].label = "Homing", rows[4].sub = "home X, Y, Z or the gantry on its own", rows[4].chev = true;
-    rows[5].icon = Icon::Power, rows[5].iconColor = th::BAD, rows[5].label = "All off", rows[5].sub = "outputs off, motion stopped";
+    rows[3].icon = Icon::Sensor, rows[3].label = "Live cameras", rows[3].sub = "top and bottom camera picture", rows[3].chev = true;
+    rows[4].icon = Icon::Motor, rows[4].label = "Test motors", rows[4].sub = "X Y Z E0 E1 ROT PASTE by degrees", rows[4].chev = true;
+    rows[5].icon = Icon::Home, rows[5].label = "Homing", rows[5].sub = "home X, Y, Z or the gantry on its own", rows[5].chev = true;
+    rows[6].icon = Icon::Power, rows[6].iconColor = th::BAD, rows[6].label = "All off", rows[6].sub = "outputs off, motion stopped";
     list_.draw(g, T_ROWS, rows, 25, 35);
 }
 
@@ -162,12 +163,15 @@ void TestingScreen::action(uint16_t id)
         });
         break;
     case 3:
-        ui.push(&motorTestScreen);
+        camerasScreen.open(1);
         break;
     case 4:
-        ui.push(&homeAxesScreen);
+        ui.push(&motorTestScreen);
         break;
     case 5:
+        ui.push(&homeAxesScreen);
+        break;
+    case 6:
         ui.send("HALT", nullptr, false);
         allOff();
         break;

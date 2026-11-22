@@ -2,6 +2,7 @@
 #include "screens.h"
 #include "../hw/input.h"
 #include "../../vision/camera.h"
+#include "../../ctrl/protocol/commands.h"
 
 #include <cmath>
 
@@ -15,7 +16,7 @@ static const char *CAM_NAME[] = {"bottom", "top"};
 
 // ---------------------------------------------------------------- joystick jog
 
-// Velocity jog: while the stick is out, "JOGV x= y=" (mm/s) every 50 ms; the Octopus keeps moving at
+// Velocity jog: while the stick is out, "JOGV x= y=" (mm/s) every 25 ms, straight to the Octopus queue; the Octopus keeps moving at
 // that speed and blends it into one smooth motion. Released: one "JOGV ... 0" stops it (and the board
 // stops by itself 300 ms after the last JOGV). Speed grows with the deflection (squared: fine near the
 // centre, joy_jog_speed at full deflection).
@@ -27,19 +28,21 @@ void stickJog(int axis)
     const JoyState j = input.stick();
     const bool xy = axis < 0;
     const bool out = fabsf(j.y) >= 0.01f || (xy && fabsf(j.x) >= 0.01f);
-    if (!out)
+    if (!out || (moving && movingAxis != (xy ? -1 : axis)))
     {
         if (moving)
         {
             moving = false;
-            ui.send(movingAxis < 0 ? "JOGV x=0 y=0" : movingAxis == 2 ? "JOGV z=0" : "JOGV e1=0", nullptr, false, false);
+            commands::jogVelocity(movingAxis < 0 ? "JOGV x=0 y=0" : movingAxis == 2 ? "JOGV z=0" : "JOGV e1=0");
         }
         return;
     }
-    if (millis() - last < 50 || ctrl.queued() > 1)
+    if (millis() - last < 25 || (axis == 4 && ctrl.queued() > 1))
         return;
     last = millis();
-    const float vmax = std::max(0.1f, (float)atof(machine.setting("joy_jog_speed", "50").c_str()));
+    // Not homed: no soft limits, nothing stops the head at the frame -> 30 % of joy_jog_speed
+    const float vmax = std::max(0.1f, (float)atof(machine.setting("joy_jog_speed", "50").c_str())) *
+                       (machine.status().homed ? 1.0f : 0.3f);
     auto curve = [](float v) { return v * fabsf(v); };
     char cmd[80];
     if (axis == 4)
@@ -60,7 +63,7 @@ void stickJog(int axis)
         snprintf(cmd, sizeof(cmd), "JOGV %s=%.2f", axis == 2 ? "z" : "e1", curve(j.y) * vmax * (axis == 2 ? 0.3f : 1));
     moving = true;
     movingAxis = xy ? -1 : axis;
-    ui.send(cmd, nullptr, false, false);
+    commands::jogVelocity(cmd);
 }
 
 // Fields of a record as "key value, key value" (calibration results)
@@ -88,9 +91,22 @@ void CamerasScreen::open(int cam)
     ui.push(this);
 }
 
+void cameraLights(int cam, bool part)
+{
+    if (cam == 0)
+        ui.send(part ? "LIGHT bottom PART" : "LIGHT bottom ON", nullptr, false); // the top light goes dark by itself
+    else
+    {
+        ui.send("LIGHT bottom OFF", nullptr, false);
+        ui.send(cam == 1 ? "LIGHT top ON" : "LIGHT top IDLE", nullptr, false);
+    }
+}
+
 void CamerasScreen::enter()
 {
     result_.clear();
+    light_ = 1;
+    cameraLights(cam_); // its light on while it is shown
     // INFO opens the camera with the current settings (on the controller thread)
     ui.send(std::string("CAM ") + CAM_NAME[cam_] + " INFO", [this](const Reply &r) {
         if (r.ok && !r.records.empty() && !r.records[0].flag("ok"))
@@ -115,11 +131,14 @@ void CamerasScreen::action(uint16_t id)
         ui.redraw();
         break;
     case CAM_LIGHT:
-    {
-        const bool on = (cam_ ? s.lightTop : s.lightBottom) > 0;
-        ui.send(std::string("LIGHT ") + CAM_NAME[cam_] + (on ? " OFF" : " ON"));
+        // bottom: off -> calibration colour -> part colour -> off; top: on / off
+        light_ = cam_ ? (light_ ? 0 : 1) : (light_ + 1) % 3;
+        if (light_)
+            cameraLights(cam_, light_ == 2);
+        else
+            ui.send(std::string("LIGHT ") + CAM_NAME[cam_] + " OFF");
+        ui.redraw();
         break;
-    }
     case CAM_MEASURE:
         result_ = "measuring ...";
         ui.send(cam_ ? "CAM top FIDUCIAL" : "CAM bottom MEASURE", [this](const Reply &r) {
@@ -149,17 +168,11 @@ void CamerasScreen::action(uint16_t id)
     }
 }
 
-void CamerasScreen::draw(Gfx &g)
+void drawCameraPicture(Gfx &g, int cam, int bx, int by, int bw, int bh, std::vector<uint16_t> &px_)
 {
-    const MachineStatus s = machine.status();
-    g.background();
-    g.titleBar(cam_ ? "Top camera" : "Bottom camera");
-
-    // Picture: newest frame, fitted into 212 x 160 design px, crosshair in the centre
-    const int bx = 4, by = 28, bw = 212, bh = 160;
     g.rrect(bx, by, bw, bh, 6, th::PANEL);
     Frame f;
-    if (cams.latest(cam_, f) && !f.gray.empty())
+    if (cams.latest(cam, f) && !f.gray.empty())
     {
         int pw = g.pw(bx, bw), ph = g.ph(by, bh);
         if ((long)f.gray.w * ph > (long)f.gray.h * pw)
@@ -167,7 +180,7 @@ void CamerasScreen::draw(Gfx &g)
         else
             pw = ph * f.gray.w / f.gray.h;
         std::vector<uint8_t> rgb = frameRgb(f, pw, ph);
-        cams.drawOverlay(cam_, f, rgb, pw, ph); // green outline of what the camera just found
+        cams.drawOverlay(cam, f, rgb, pw, ph); // green outline of what the camera just found
         px_.resize((size_t)pw * ph);
         for (size_t i = 0; i < px_.size(); i++)
             px_[i] = (uint16_t)(((rgb[i * 3] & 0xF8) << 8) | ((rgb[i * 3 + 1] & 0xFC) << 3) | (rgb[i * 3 + 2] >> 3));
@@ -182,14 +195,23 @@ void CamerasScreen::draw(Gfx &g)
     else
     {
         g.icon(Icon::Warn, bx + bw / 2 - 7, by + bh / 2 - 22, th::WARN);
-        const std::string err = cams.error(cam_);
-        g.text(err.empty() ? "no picture yet" : err, bx + bw / 2, by + bh / 2, Font::Small, th::DIM, Align::Center);
+        const std::string err = cams.error(cam);
+        g.text(g.fit(err.empty() ? "no picture yet" : err, Font::Small, bw - 8), bx + bw / 2, by + bh / 2, Font::Small, th::DIM,
+               Align::Center);
     }
+}
+
+void CamerasScreen::draw(Gfx &g)
+{
+    const MachineStatus s = machine.status();
+    g.background();
+    g.titleBar(cam_ ? "Top camera" : "Bottom camera");
+    drawCameraPicture(g, cam_, 4, 28, 212, 160, px_); // newest frame, crosshair in the centre
 
     const bool light = (cam_ ? s.lightTop : s.lightBottom) > 0;
     g.button(CAM_SWITCH, cam_ ? "Bottom" : "Top", 222, 30, 94, 34, Kind::Normal, Icon::Refresh, Font::Small);
-    g.button(CAM_LIGHT, light ? "Light on" : "Light off", 222, 70, 94, 34, light ? Kind::Primary : Kind::Normal, Icon::None,
-             Font::Small);
+    const char *lname = !light ? "Light off" : cam_ ? "Light on" : light_ == 2 ? "Light: part" : "Light: cal";
+    g.button(CAM_LIGHT, lname, 222, 70, 94, 34, light ? Kind::Primary : Kind::Normal, Icon::None, Font::Small);
     g.button(CAM_MEASURE, cam_ ? "Find mark" : "Measure", 222, 110, 94, 34, Kind::Normal, Icon::Check, Font::Small);
     g.button(CAM_SAVE, "Save", 222, 150, 94, 34, Kind::Normal, Icon::File, Font::Small);
 
@@ -356,7 +378,7 @@ void CamCalScreen::draw(Gfx &g)
     const bool top = cam_ == 1;
     g.background();
     g.titleBar(top ? "Top camera" : "Bottom camera");
-    std::vector<Row> rows(top ? 8 : 7);
+    std::vector<Row> rows(top ? 9 : 8);
     const std::string pre = top ? "cam_top_" : "cam_bottom_";
     int i = 0;
     if (!top)
@@ -387,6 +409,11 @@ void CamCalScreen::draw(Gfx &g)
     {
         rows[i].icon = Icon::Refresh, rows[i].label = "Rotation direction", rows[i].sub = "part on the nozzle over the camera";
         rows[i++].value = fmtSetting("cam_bottom_rot_sign", "%+.0f");
+    }
+    rows[i].icon = Icon::Sensor, rows[i].label = "Exposure", rows[i].sub = "fixed: the same brightness every picture";
+    {
+        const std::string e = machine.setting((pre + "exposure").c_str(), "-1");
+        rows[i++].value = atof(e.c_str()) < 0 ? "auto" : fmtSetting((pre + "exposure").c_str(), "%.0f");
     }
     rows[i].icon = Icon::Sensor, rows[i].label = "Live picture", rows[i].chev = true, rows[i++].sub = "lights, jog with the stick";
     rows[i].icon = Icon::File, rows[i].label = "Printable checkerboard", rows[i++].sub = "website: /checkerboard.html";
@@ -442,6 +469,12 @@ void CamCalScreen::action(uint16_t id)
         if (top && row == 5)
             calRun("CAL TOPOFFSET", "Top camera offset");
         else if (row == (top ? 6 : 5))
+            dialog.open("Exposure", top ? "Fixed: measured with the top light on," : "Fixed: measured with the bottom light on,",
+                        "or automatic (adjusts each picture).",
+                        {{"Auto", Kind::Normal, [cam, name] { calRun("CAL EXPOSURE " + cam + " AUTO", name + " exposure"); }},
+                         {"Fix", Kind::Primary, [cam, name] { calRun("CAL EXPOSURE " + cam, name + " exposure"); }}},
+                        Icon::Sensor, th::ACCENT, 1);
+        else if (row == (top ? 7 : 6))
             camerasScreen.open(cam_);
         else
             ui.toast("Print it from the website: /checkerboard.html", th::ACCENT);

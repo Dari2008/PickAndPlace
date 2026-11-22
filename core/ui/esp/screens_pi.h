@@ -13,6 +13,13 @@
 #include <string>
 #include <vector>
 
+// Live picture of a camera fitted into (bx, by, bw, bh), red cross in the centre, green outline of what
+// it just found. px = pixel buffer kept by the caller.
+void drawCameraPicture(Gfx &g, int cam, int bx, int by, int bw, int bh, std::vector<uint16_t> &px);
+// Light for the camera being looked at: 0 bottom (ring, calibration colour; part = part colour),
+// 1 top (at light_top, bottom ring off), -1 none (ring off, top light back to idle)
+void cameraLights(int cam, bool part); // default part = false: screens.h
+
 class CamerasScreen : public Screen
 {
 public:
@@ -21,6 +28,7 @@ public:
     void draw(Gfx &g) override;
     void action(uint16_t id) override;
     bool press() override;
+    void leave() override { cameraLights(-1); }
     void tick() override { stickJog(-1); }
     bool usesStick() const override { return true; }
     uint16_t defaultFocus() const override { return 1; }
@@ -39,6 +47,7 @@ public:
 
 private:
     int cam_ = 1;
+    int light_ = 1; // 0 off, 1 on (bottom: calibration colour), 2 bottom in the part colour
     std::string result_;
     std::vector<uint16_t> px_;
 };
@@ -83,8 +92,10 @@ public:
     void resume() override { ui.redraw(); }
     void draw(Gfx &g) override;
     void action(uint16_t id) override;
-    void tick() override { stickJog(-1); }
+    void tick() override;
     bool usesStick() const override { return true; }
+    bool press() override;
+    bool hold() override;
     uint8_t liveRects(Rect *r) const override;
     static int steps();
 
@@ -94,6 +105,7 @@ private:
     std::string liveLine() const;
     int step_ = 0, axis_ = 0;
     float measured_ = 100; // steps per mm: what the ruler says
+    bool zJogged_ = false; // the stick moved Z during this button press: the press itself does nothing
 };
 
 // Calibration -> Nozzle sensor order: trigger the slots in order, each one's sensor bit is learned

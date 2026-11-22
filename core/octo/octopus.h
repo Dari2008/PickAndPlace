@@ -94,6 +94,9 @@ public:
     void urgent(const std::string &line);
     // Queued like send(), but nobody waits for or fetches the answer (JOGV from the joystick)
     void post(const std::string &line, int timeoutMs = 0);
+    // As post(), but a JOGV still waiting in the queue (not yet on the wire) gets this line
+    // instead: the board always gets the newest stick speed, never a backlog of old ones.
+    void postJog(const std::string &line);
 
     OctoStatus status();
     void onEvent(std::function<void(const Record &)> fn);
@@ -143,7 +146,7 @@ private:
     std::vector<std::function<void(const Record &)>> listeners_;
     std::atomic<uint32_t> lastRx_{0};
     // Last line written. Nothing for KEEPALIVE_MS while idle: a PING, so the board's link watchdog
-    // (watchdog_ms) doesn't stop the pump / valve / a move while the Pi just has nothing to say.
+    // (watchdog_ms) doesn't stop a move while the Pi just has nothing to say.
     uint32_t lastTx_ = 0;
     static const uint32_t KEEPALIVE_MS = 500;
 };

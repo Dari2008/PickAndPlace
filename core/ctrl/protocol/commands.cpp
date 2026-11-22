@@ -93,6 +93,15 @@ namespace commands
             octo.urgent("HALT");
     }
 
+    bool jogVelocity(const std::string &line)
+    {
+        if (runner.active() || feederScan.active())
+            return false;
+        octo.postJog(line);
+        motion.invalidateTargets();
+        return true;
+    }
+
     bool refuseIfBusy(Port &port)
     {
         if (runner.active())

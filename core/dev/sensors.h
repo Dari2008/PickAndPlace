@@ -42,6 +42,8 @@ private:
     std::atomic<bool> bmp_{false}, ads_{false}, sim_{false};
     std::atomic<float> pressure_{NAN}, temp_{NAN};
     std::atomic<int16_t> adc_[4] = {};
+    int16_t adsHist_[2][3] = {};   // last three readings per stick channel (median)
+    int adsCount_[2] = {};
     uint8_t bmpAddr_ = 0x76;
     // BMP280 calibration
     uint16_t T1_ = 0, P1_ = 0;

@@ -31,6 +31,7 @@ public:
     virtual ~Screen() {}
     virtual void enter() {}  // opened (pushed)
     virtual void resume() {} // the screen above it was closed
+    virtual void leave() {}  // closed (popped, replaced, home)
     virtual void draw(Gfx &g) = 0;
     virtual void action(uint16_t id) {}
     virtual bool turn(int8_t steps) { return false; } // true = used (else: focus moves)
